@@ -31,6 +31,9 @@ data/
 *.db
 *.db-journal
 
+# Git Worktrees (development branches)
+.worktrees/
+
 # 测试临时文件
 test_chroma_db/
 *.log
