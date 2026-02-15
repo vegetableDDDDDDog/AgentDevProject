@@ -1,10 +1,10 @@
 """
-Test multi-tenant database models.
+测试多租户数据库模型。
 
-Tests the new multi-tenant support including:
-- Tenant, User, APIKey, TenantQuota models
-- tenant_id foreign keys in Session, Message, AgentLog
-- Data integrity and cascade deletes
+测试新的多租户支持，包括：
+- Tenant, User, APIKey, TenantQuota 模型
+- Session, Message, AgentLog 中的 tenant_id 外键
+- 数据完整性和级联删除
 """
 
 import pytest
@@ -18,9 +18,9 @@ from sqlalchemy import text
 @pytest.fixture(scope="function")
 def db_session():
     """
-    Create a fresh database session for each test.
+    为每个测试创建新的数据库会话。
     """
-    # Create all tables
+    # 创建所有表
     Base.metadata.create_all(bind=engine)
 
     session = SessionLocal()
@@ -29,14 +29,14 @@ def db_session():
         session.commit()
     finally:
         session.close()
-        # Drop all tables after test
+        # 测试后删除所有表
         Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function")
 def test_tenant(db_session):
     """
-    Create a test tenant with quota.
+    创建带配额的测试租户。
     """
     tenant_id = str(uuid.uuid4())
 
@@ -66,10 +66,10 @@ def test_tenant(db_session):
 
 
 class TestTenantModel:
-    """Test Tenant model."""
+    """测试租户模型。"""
 
     def test_create_tenant(self, db_session):
-        """Test creating a tenant."""
+        """测试创建租户。"""
         tenant = Tenant(
             id=str(uuid.uuid4()),
             name="test-tenant",
@@ -87,14 +87,14 @@ class TestTenantModel:
         assert retrieved.status == "active"
 
     def test_tenant_relationships(self, db_session, test_tenant):
-        """Test tenant relationships."""
-        # Access relationships
+        """测试租户关系。"""
+        # 访问关系
         assert test_tenant.quota is not None
         assert test_tenant.quota.max_users == 10
         assert test_tenant.quota.max_agents == 20
 
     def test_unique_tenant_name(self, db_session):
-        """Test tenant name uniqueness."""
+        """测试租户名称唯一性。"""
         tenant_id1 = str(uuid.uuid4())
         tenant_id2 = str(uuid.uuid4())
 
@@ -121,10 +121,10 @@ class TestTenantModel:
 
 
 class TestUserModel:
-    """Test User model."""
+    """测试用户模型。"""
 
     def test_create_user(self, db_session, test_tenant):
-        """Test creating a user."""
+        """测试创建用户。"""
         user_id = str(uuid.uuid4())
 
         user = User(
@@ -145,7 +145,7 @@ class TestUserModel:
         assert retrieved.role == "user"
 
     def test_user_tenant_relationship(self, db_session, test_tenant):
-        """Test user belongs to tenant."""
+        """测试用户属于租户。"""
         user = User(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
@@ -155,13 +155,13 @@ class TestUserModel:
         db_session.add(user)
         db_session.commit()
 
-        # Access tenant relationship
+        # 访问租户关系
         assert user.tenant is not None
         assert user.tenant.id == test_tenant.id
         assert user.tenant.name == "test-tenant"
 
     def test_unique_email_per_tenant(self, db_session, test_tenant):
-        """Test email uniqueness within tenant."""
+        """测试租户内邮箱唯一性。"""
         user1 = User(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
@@ -171,11 +171,11 @@ class TestUserModel:
         db_session.add(user1)
         db_session.commit()
 
-        # Try to create duplicate email in same tenant
+        # 尝试在同一租户中创建重复邮箱
         user2 = User(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
-            email="same@example.com",  # Duplicate email
+            email="same@example.com",  # 重复邮箱
             password_hash="hash2"
         )
         db_session.add(user2)
@@ -185,10 +185,10 @@ class TestUserModel:
 
 
 class TestSessionMultiTenant:
-    """Test Session model with multi-tenant support."""
+    """测试多租户支持的Session模型。"""
 
     def test_session_has_tenant_id(self, db_session, test_tenant):
-        """Test session has tenant_id field."""
+        """测试session有tenant_id字段。"""
         session = Session(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
@@ -203,7 +203,7 @@ class TestSessionMultiTenant:
         assert retrieved.agent_type == "test_agent"
 
     def test_session_tenant_relationship(self, db_session, test_tenant):
-        """Test session belongs to tenant."""
+        """测试session属于租户。"""
         session = Session(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
@@ -212,12 +212,12 @@ class TestSessionMultiTenant:
         db_session.add(session)
         db_session.commit()
 
-        # Access tenant relationship
+        # 访问租户关系
         assert session.tenant is not None
         assert session.tenant.id == test_tenant.id
 
     def test_cascade_delete_tenant_deletes_sessions(self, db_session, test_tenant):
-        """Test deleting tenant cascades to sessions."""
+        """测试删除租户级联删除session。"""
         session = Session(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
@@ -229,20 +229,20 @@ class TestSessionMultiTenant:
         session_id = session.id
         tenant_id = test_tenant.id
 
-        # Delete tenant
+        # 删除租户
         db_session.delete(test_tenant)
         db_session.commit()
 
-        # Session should be deleted
+        # Session应该被删除
         retrieved = db_session.query(Session).filter(Session.id == session_id).first()
         assert retrieved is None
 
 
 class TestMessageMultiTenant:
-    """Test Message model with multi-tenant support."""
+    """测试多租户支持的Message模型。"""
 
     def test_message_has_tenant_id(self, db_session, test_tenant):
-        """Test message has tenant_id field."""
+        """测试message有tenant_id字段。"""
         session = Session(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
@@ -267,7 +267,7 @@ class TestMessageMultiTenant:
         assert retrieved.content == "Hello, world!"
 
     def test_message_tenant_relationship(self, db_session, test_tenant):
-        """Test message belongs to tenant."""
+        """测试message属于租户。"""
         session = Session(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
@@ -286,16 +286,16 @@ class TestMessageMultiTenant:
         db_session.add(message)
         db_session.commit()
 
-        # Access tenant relationship
+        # 访问租户关系
         assert message.tenant is not None
         assert message.tenant.id == test_tenant.id
 
 
 class TestAgentLogMultiTenant:
-    """Test AgentLog model with multi-tenant support."""
+    """测试多租户支持的AgentLog模型。"""
 
     def test_agent_log_has_tenant_id(self, db_session, test_tenant):
-        """Test agent log has tenant_id field."""
+        """测试agent log有tenant_id字段。"""
         agent_log = AgentLog(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
@@ -312,7 +312,7 @@ class TestAgentLogMultiTenant:
         assert retrieved.status == "completed"
 
     def test_agent_log_tenant_relationship(self, db_session, test_tenant):
-        """Test agent log belongs to tenant."""
+        """测试agent log属于租户。"""
         agent_log = AgentLog(
             id=str(uuid.uuid4()),
             tenant_id=test_tenant.id,
@@ -322,16 +322,16 @@ class TestAgentLogMultiTenant:
         db_session.add(agent_log)
         db_session.commit()
 
-        # Access tenant relationship
+        # 访问租户关系
         assert agent_log.tenant is not None
         assert agent_log.tenant.id == test_tenant.id
 
 
 class TestTenantIsolation:
-    """Test tenant data isolation."""
+    """测试租户数据隔离。"""
 
     def test_tenants_separate_data(self, db_session):
-        """Test that different tenants have separate data."""
+        """测试不同租户拥有独立的数据。"""
         # Create two tenants
         tenant1_id = str(uuid.uuid4())
         tenant2_id = str(uuid.uuid4())
@@ -366,8 +366,8 @@ class TestTenantIsolation:
         assert tenant2_sessions[0].agent_type == "agent2"
 
     def test_tenant_filter_isolation(self, db_session):
-        """Test filtering by tenant_id isolates data correctly."""
-        # Create multiple tenants with sessions
+        """测试按tenant_id过滤正确隔离数据。"""
+        # 创建多个租户及其sessions
         for i in range(3):
             tenant_id = str(uuid.uuid4())
             tenant = Tenant(
@@ -388,9 +388,9 @@ class TestTenantIsolation:
 
         db_session.commit()
 
-        # Each tenant should have exactly 2 sessions
+        # 每个租户应该恰好有2个sessions
         for i in range(3):
-            # Find tenant ID
+            # 查找租户ID
             tenant = db_session.query(Tenant).filter(Tenant.name == f"tenant-{i}").first()
             sessions = db_session.query(Session).filter(Session.tenant_id == tenant.id).all()
             assert len(sessions) == 2

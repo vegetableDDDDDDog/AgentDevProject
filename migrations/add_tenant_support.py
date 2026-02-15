@@ -1,8 +1,8 @@
 """
-Add multi-tenant support to existing database.
+为现有数据库添加多租户支持。
 
-This migration script adds tenant_id columns to existing tables
-and migrates existing data to a default tenant.
+此迁移脚本为现有表添加tenant_id列，
+并将现有数据迁移到默认租户。
 """
 
 import sys
@@ -20,14 +20,14 @@ import uuid
 
 def migrate_add_tenant_support():
     """
-    Add multi-tenant support to existing database.
+    为现有数据库添加多租户支持。
 
-    Steps:
-    1. Create new multi-tenant tables (tenants, users, api_keys, tenant_quotas)
-    2. Add tenant_id columns to existing tables
-    3. Create a default tenant
-    4. Migrate existing data to default tenant
-    5. Verify migration success
+    步骤:
+    1. 创建新的多租户表（tenants, users, api_keys, tenant_quotas）
+    2. 为现有表添加tenant_id列
+    3. 创建默认租户
+    4. 将现有数据迁移到默认租户
+    5. 验证迁移成功
     """
 
     print("=" * 70)
@@ -286,47 +286,47 @@ def migrate_add_tenant_support():
 
 def rollback_tenant_support():
     """
-    Rollback multi-tenant support (WARNING: This will delete tenant data).
+    回滚多租户支持（警告：这将删除租户数据）。
 
-    This removes tenant_id columns and drops multi-tenant tables.
-    Use only for testing/development.
+    这将移除tenant_id列并删除多租户表。
+    仅用于测试/开发。
     """
 
-    print("\n⚠️  WARNING: This will rollback multi-tenant support!")
-    print("  All tenant data will be DELETED.")
+    print("\n⚠️  警告：这将回滚多租户支持!")
+    print("  所有租户数据将被删除。")
 
-    response = input("\nProceed with rollback? (yes/no): ")
+    response = input("\n继续回滚？(yes/no): ")
     if response.lower() != 'yes':
-        print("Rollback cancelled.")
+        print("回滚已取消。")
         return
 
-    print("\nRolling back multi-tenant support...")
+    print("\n正在回滚多租户支持...")
 
     with engine.connect() as conn:
         try:
-            # Drop foreign key constraints first
+            # 首先删除外键约束
             conn.execute(text("DROP TABLE IF EXISTS api_keys"))
             conn.execute(text("DROP TABLE IF EXISTS tenant_quotas"))
             conn.execute(text("DROP TABLE IF EXISTS users"))
             conn.execute(text("DROP TABLE IF EXISTS tenants"))
 
-            # Note: SQLite doesn't support DROP COLUMN, so we need to:
-            # 1. Create new tables without tenant_id
-            # 2. Copy data from old tables
-            # 3. Drop old tables
-            # 4. Rename new tables
-            # For simplicity, we'll just report what needs to be done
+            # 注意：SQLite不支持DROP COLUMN，所以我们需要：
+            # 1. 创建没有tenant_id的新表
+            # 2. 从旧表复制数据
+            # 3. 删除旧表
+            # 4. 重命名新表
+            # 为简单起见，我们只报告需要做什么
 
-            print("  ✅ Dropped multi-tenant tables")
-            print("\n  ℹ️  Note: tenant_id columns still exist in sessions/messages/agent_logs")
-            print("  ℹ️  To completely remove them, recreate tables without tenant_id")
+            print("  ✅ 已删除多租户表")
+            print("\n  ℹ️  注意：tenant_id列仍存在于sessions/messages/agent_logs中")
+            print("  ℹ️  要完全删除它们，需要重新创建不包含tenant_id的表")
 
             conn.commit()
 
-            print("\n✅ Rollback completed (partial)")
+            print("\n✅ 回滚完成（部分）")
 
         except Exception as e:
-            print(f"\n❌ Rollback failed: {e}")
+            print(f"\n❌ 回滚失败: {e}")
             import traceback
             traceback.print_exc()
             conn.rollback()
@@ -335,8 +335,8 @@ def rollback_tenant_support():
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Migrate database to support multi-tenancy")
-    parser.add_argument("--rollback", action="store_true", help="Rollback multi-tenant support")
+    parser = argparse.ArgumentParser(description="迁移数据库以支持多租户")
+    parser.add_argument("--rollback", action="store_true", help="回滚多租户支持")
 
     args = parser.parse_args()
 
