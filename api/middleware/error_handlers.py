@@ -15,6 +15,7 @@ from services.exceptions import (
     TokenInvalidException,
     TenantSelectionRequiredException,
     UserSuspendedException,
+    TenantException,
     TenantNotFoundException,
     TenantSuspendedException,
     QuotaException,
