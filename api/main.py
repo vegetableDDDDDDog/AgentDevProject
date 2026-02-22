@@ -1,8 +1,8 @@
 """
-FastAPI Application - Agent PaaS Platform
+FastAPI 应用 - Agent PaaS 平台
 
-Main entry point for the Agent Platform API service.
-Provides RESTful endpoints and SSE streaming for agent interactions.
+Agent 平台 API 服务的主入口点。
+为 Agent 交互提供 RESTful 端点和 SSE 流式传输。
 """
 
 import time
@@ -23,11 +23,11 @@ from services.database import init_db, engine, SessionLocal
 from services.session_service import SessionService
 from services.agent_factory import list_agents
 
-# Import agents to trigger registration
-import agents.simple_agents  # Registers: echo_agent, mock_chat_agent, counter_agent, error_agent
+# 导入 agents 以触发注册
+import agents.simple_agents  # 注册: echo_agent, mock_chat_agent, counter_agent, error_agent
 
 
-# Configure logging
+# 配置日志
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -35,47 +35,47 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Track server start time
+# 追踪服务器启动时间
 start_time = time.time()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Application lifespan manager.
+    应用程序生命周期管理器。
 
-    Handles startup and shutdown events for the FastAPI application.
+    处理 FastAPI 应用程序的启动和关闭事件。
     """
-    # Startup
-    logger.info("Starting Agent PaaS Platform...")
-    logger.info(f"Version: {settings.app_version}")
-    logger.info(f"Debug mode: {settings.debug}")
+    # 启动
+    logger.info("正在启动 Agent PaaS 平台...")
+    logger.info(f"版本: {settings.app_version}")
+    logger.info(f"调试模式: {settings.debug}")
 
-    # Initialize database
+    # 初始化数据库
     try:
         init_db()
-        logger.info("Database initialized successfully")
+        logger.info("数据库初始化成功")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"数据库初始化失败: {e}")
         raise
 
-    # Log registered agents
+    # 记录已注册的 agents
     agents = list_agents()
-    logger.info(f"Registered agents: {list(agents.keys())}")
+    logger.info(f"已注册的 agents: {list(agents.keys())}")
 
     yield
 
-    # Shutdown
-    logger.info("Shutting down Agent PaaS Platform...")
+    # 关闭
+    logger.info("正在关闭 Agent PaaS 平台...")
     engine.dispose()
-    logger.info("Database connections closed")
+    logger.info("数据库连接已关闭")
 
 
-# Create FastAPI application
+# 创建 FastAPI 应用
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="Enterprise-grade Agent Platform as a Service",
+    description="企业级 Agent 平台即服务",
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
     lifespan=lifespan
@@ -83,10 +83,10 @@ app = FastAPI(
 
 
 # ============================================================================
-# Middleware
+# 中间件
 # ============================================================================
 
-# CORS middleware
+# CORS 中间件
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -99,37 +99,37 @@ app.add_middleware(
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable) -> JSONResponse:
     """
-    Log all incoming requests and add processing time header.
+    记录所有传入请求并添加处理时间头。
     """
     start_time_req = time.time()
 
-    # Log request
+    # 记录请求
     logger.info(f"{request.method} {request.url.path}")
 
-    # Process request
+    # 处理请求
     response = await call_next(request)
 
-    # Add processing time header
+    # 添加处理时间头
     process_time = time.time() - start_time_req
     response.headers["X-Process-Time"] = str(process_time)
 
-    # Log response
+    # 记录响应
     logger.info(
         f"{request.method} {request.url.path} - "
-        f"Status: {response.status_code} - "
-        f"Time: {process_time:.3f}s"
+        f"状态: {response.status_code} - "
+        f"时间: {process_time:.3f}s"
     )
 
     return response
 
 
 # ============================================================================
-# Exception Handlers
+# 异常处理器
 # ============================================================================
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-    """Handle HTTP exceptions."""
+    """处理 HTTP 异常。"""
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(
@@ -145,12 +145,12 @@ async def validation_exception_handler(
     request: Request,
     exc: RequestValidationError
 ) -> JSONResponse:
-    """Handle request validation errors."""
+    """处理请求验证错误。"""
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content=ErrorResponse(
             error="VALIDATION_ERROR",
-            message="Request validation failed",
+            message="请求验证失败",
             details={"errors": exc.errors()},
             path=request.url.path
         ).model_dump()
@@ -159,37 +159,37 @@ async def validation_exception_handler(
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Handle all unhandled exceptions."""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    """处理所有未处理的异常。"""
+    logger.error(f"未处理的异常: {exc}", exc_info=True)
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(
             error="INTERNAL_SERVER_ERROR",
-            message=str(exc) if settings.debug else "An unexpected error occurred",
+            message=str(exc) if settings.debug else "发生意外错误",
             path=request.url.path
         ).model_dump()
     )
 
 
 # ============================================================================
-# Health Check Endpoint
+# 健康检查端点
 # ============================================================================
 
 @app.get(
     "/health",
     response_model=HealthResponse,
     tags=["Health"],
-    summary="Health check endpoint"
+    summary="健康检查端点"
 )
 async def health_check() -> HealthResponse:
     """
-    Check the health status of the API service.
+    检查 API 服务的健康状态。
 
     Returns:
-        HealthResponse: Status information including database connectivity
+        HealthResponse: 包括数据库连接性的状态信息
     """
-    # Check database connection
+    # 检查数据库连接
     db_connected = False
     try:
         db = SessionLocal()
@@ -197,9 +197,9 @@ async def health_check() -> HealthResponse:
         db.close()
         db_connected = True
     except Exception as e:
-        logger.error(f"Database health check failed: {e}")
+        logger.error(f"数据库健康检查失败: {e}")
 
-    # Get registered agents count
+    # 获取已注册 agents 数量
     agents = list_agents()
     agent_count = len(agents)
 
@@ -213,26 +213,26 @@ async def health_check() -> HealthResponse:
 
 
 # ============================================================================
-# Root Endpoint
+# 根端点
 # ============================================================================
 
 @app.get("/", tags=["Root"])
 async def root() -> dict:
     """
-    Root endpoint with API information.
+    带有 API 信息的根端点。
     """
     return {
         "name": settings.app_name,
         "version": settings.app_version,
         "status": "running",
-        "docs": "/docs" if settings.debug else "disabled (debug mode off)",
+        "docs": "/docs" if settings.debug else "已禁用（调试模式关闭）",
         "health": "/health",
         "api_prefix": settings.api_prefix
     }
 
 
 # ============================================================================
-# Router Registration
+# 路由注册
 # ============================================================================
 
 from api.routers import chat, agents, sessions
@@ -243,7 +243,7 @@ app.include_router(sessions.router, prefix=settings.api_prefix, tags=["Sessions"
 
 
 # ============================================================================
-# Development Server
+# 开发服务器
 # ============================================================================
 
 if __name__ == "__main__":
