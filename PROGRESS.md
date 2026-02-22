@@ -1,5 +1,20 @@
 # Agent PaaS 平台开发 - 阶段二进度
 
+## 📋 工作流程规约
+
+**任务完成后必须执行以下步骤**：
+1. ✅ 更新本文档的"进度状态"和"变更日志"
+2. ✅ 在 `project_process.md` 的"实施日志"部分添加完成记录
+3. ✅ 运行测试验证功能正常
+4. ✅ 提交代码到 `feature/phase2-multi-tenant` 分支
+5. ✅ 更新任务完成时间
+
+**文件位置**：
+- 进度跟踪：`/home/wineash/PycharmProjects/AgentDevProject/.worktrees/phase2-multi-tenant/PROGRESS.md`
+- 实施日志：`/home/wineash/PycharmProjects/AgentDevProject/.worktrees/phase2-multi-tenant/project_process.md`
+
+---
+
 ## 📅 2026-02-14 - 阶段二启动
 
 ### ✅ 今日完成
@@ -101,17 +116,17 @@
 - [x] 架构设计
 - [x] 技术选型
 - [x] 环境搭建
-- [ ] PostgreSQL配置
-- [ ] 数据库迁移
-- [ ] 租户/用户模型
-- [ ] 认证服务
-- [ ] LLM集成
+- [x] 数据库迁移（多租户模型）
+- [x] 认证服务（JWT + OAuth2）
+- [ ] 租户隔离服务
+- [ ] LLM集成（智谱AI）
 - [ ] 前端UI
 - [ ] 监控体系
 - [ ] 部署配置
 
-**当前阶段**: 环境就绪，准备实施 🚀
-**下一阶段**: PostgreSQL配置 + Alembic迁移
+**当前阶段**: JWT 认证服务已完成 ✅
+**下一阶段**: 实现租户隔离服务
+**进度**: 2/6 核心任务完成 (33.3%)
 
 ---
 
@@ -148,6 +163,22 @@ cat docs/plans/2026-02-14-agent-paas-phase2-design.md
 ---
 
 ## 📝 变更日志
+
+### 2026-02-22
+- ✅ 完成 JWT 认证服务（Task #2）
+  - 实现完整的 JWT 认证服务（AuthService）
+  - 创建认证路由（登录、刷新 token）
+  - 实现认证中间件（token 验证）
+  - 支持跨租户用户查询和多租户歧义处理
+  - 集成 bcrypt 密码加密（cost=12）
+  - 功能验证通过
+
+### 2026-02-21
+- ✅ 完成多租户数据库模型（Task #1）
+  - 新增 Tenant, User, APIKey, TenantQuota 模型
+  - 扩展 Session, Message, AgentLog 支持多租户
+  - 创建数据迁移脚本并成功执行
+  - 编写完整的单元测试
 
 ### 2026-02-14
 - 创建 `feature/phase2-multi-tenant` 分支
