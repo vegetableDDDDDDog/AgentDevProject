@@ -19,6 +19,7 @@ from sqlalchemy import text
 
 from api.config import settings
 from api.schemas import HealthResponse, ErrorResponse
+# 从 database.py 导入数据库初始化函数和引擎
 from services.database import init_db, engine, SessionLocal
 from services.session_service import SessionService
 from services.agent_factory import list_agents
@@ -51,9 +52,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"版本: {settings.app_version}")
     logger.info(f"调试模式: {settings.debug}")
 
-    # 初始化数据库
+    # 初始化数据库（调用 services/database.py:init_db()）
     try:
-        init_db()
+        init_db()  # 创建所有数据库表
         logger.info("数据库初始化成功")
     except Exception as e:
         logger.error(f"数据库初始化失败: {e}")

@@ -20,6 +20,9 @@ from pathlib import Path
 
 from sqlalchemy import inspect, text
 
+# 从 database.py 导入核心函数
+# init_db: 创建所有数据库表（定义在 services/database.py:269）
+# drop_all: 删除所有数据库表（定义在 services/database.py:282）
 from services.database import engine, Base, SessionLocal, init_db, drop_all
 
 # 常量
@@ -99,11 +102,13 @@ def drop_all_tables() -> None:
     """
     删除所有数据库表。
 
+    注意: 此函数调用 services/database.py 中的 drop_all()。
+
     警告: 这将不可逆地删除所有数据。
     """
     logger.warning("正在删除所有数据库表...")
     try:
-        drop_all()
+        drop_all()  # 调用 services/database.py:drop_all()
         logger.info("所有表已成功删除")
     except Exception as e:
         logger.error(f"删除表失败: {e}")
@@ -114,11 +119,14 @@ def initialize_database() -> None:
     """
     通过创建所有表来初始化数据库。
 
+    此函数是 services/database.py:init_db() 的包装器，
+    添加了日志输出以便跟踪初始化过程。
+
     使用 SQLAlchemy 的 create_all，具有幂等性（可安全多次运行）。
     """
     logger.info("正在初始化数据库...")
     try:
-        init_db()
+        init_db()  # 调用 services/database.py:init_db()
         logger.info("数据库表已成功创建")
     except Exception as e:
         logger.error(f"初始化数据库失败: {e}")
