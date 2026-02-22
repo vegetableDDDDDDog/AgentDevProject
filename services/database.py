@@ -85,6 +85,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(50), nullable=False, default='user')  # 'admin', 'user', 'viewer'
     status = Column(String(20), nullable=False, default='active')  # 'active', 'suspended', 'deleted'
+    token_version = Column(Integer, nullable=False, default=1)  # Token 版本号，用于强制下线
     last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 

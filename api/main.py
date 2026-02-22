@@ -27,6 +27,9 @@ from services.agent_factory import list_agents
 # 导入 agents 以触发注册
 import agents.simple_agents  # 注册: echo_agent, mock_chat_agent, counter_agent, error_agent
 
+# 导入认证路由和异常处理器
+from api.routers import auth
+
 
 # 配置日志
 logging.basicConfig(
@@ -174,6 +177,14 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 
 # ============================================================================
+# 注册自定义异常处理器
+# ============================================================================
+
+from api.middleware import error_handlers
+error_handlers.register_exception_handlers(app)
+
+
+# ============================================================================
 # 健康检查端点
 # ============================================================================
 
@@ -241,6 +252,7 @@ from api.routers import chat, agents, sessions
 app.include_router(chat.router, prefix=settings.api_prefix, tags=["Chat"])
 app.include_router(agents.router, prefix=settings.api_prefix, tags=["Agents"])
 app.include_router(sessions.router, prefix=settings.api_prefix, tags=["Sessions"])
+app.include_router(auth.router, prefix=settings.api_prefix, tags=["Auth"])
 
 
 # ============================================================================

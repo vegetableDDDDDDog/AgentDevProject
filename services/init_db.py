@@ -21,13 +21,12 @@ from pathlib import Path
 from sqlalchemy import inspect, text
 
 # 从 database.py 导入核心函数
-# 使用别名避免 IDE 跳转混淆：db_ 表示来自 database 模块
 from services.database import (
     engine,
     Base,
     SessionLocal,
-    init_db as db_init_db,      # 明确标识来自 database.py
-    drop_all as db_drop_all      # 明确标识来自 database.py
+    init_db,
+    drop_all
 )
 
 # 常量
@@ -113,7 +112,7 @@ def drop_all_tables() -> None:
     """
     logger.warning("正在删除所有数据库表...")
     try:
-        db_drop_all()  # 调用 services/database.py:drop_all()
+        drop_all()  # 调用 services/database.py:drop_all()
         logger.info("所有表已成功删除")
     except Exception as e:
         logger.error(f"删除表失败: {e}")
@@ -131,7 +130,7 @@ def initialize_database() -> None:
     """
     logger.info("正在初始化数据库...")
     try:
-        db_init_db()  # 调用 services/database.py:init_db()
+        init_db()  # 调用 services/database.py:init_db()
         logger.info("数据库表已成功创建")
     except Exception as e:
         logger.error(f"初始化数据库失败: {e}")

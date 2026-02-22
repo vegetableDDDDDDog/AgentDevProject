@@ -64,6 +64,12 @@ class Settings(BaseSettings):
         description="数据库连接 URL"
     )
 
+    # 安全设置
+    secret_key: str = Field(
+        default="your-secret-key-change-in-production",
+        description="JWT token 签名密钥（生产环境必须更改）"
+    )
+
     # 日志设置
     log_level: str = Field(
         default="INFO",
