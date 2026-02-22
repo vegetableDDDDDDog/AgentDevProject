@@ -1,18 +1,18 @@
 """
-Agent Factory - Dynamic Agent Registration and Instantiation
+Agent 工厂 - 动态注册和实例化
 
-This module provides a decorator-based registry pattern for Agent classes.
-Agents are registered at module import time using the @register_agent decorator,
-and can be dynamically instantiated using the get_agent() factory function.
+本模块提供基于装饰器的 Agent 类注册模式。
+Agent 在模块导入时通过 @register_agent 装饰器注册，
+并可通过 get_agent() 工厂函数动态实例化。
 
-Example:
+示例:
     @register_agent("chat_basic")
     class ChatAgent(BaseAgent):
         def __init__(self, config: dict = None):
-            super().__init__(name="chat_basic", role="Conversational Agent")
+            super().__init__(name="chat_basic", role="对话助手")
             self.config = config or {}
 
-    # Later, create an instance
+    # 稍后，创建实例
     agent = get_agent("chat_basic", {"temperature": 0.7})
 """
 
@@ -20,51 +20,51 @@ from typing import Dict, Type, Optional, Any, List
 from agents.base_agent import BaseAgent
 
 
-# Global registry for Agent classes
-# Maps agent_type string to Agent class
+# Agent 类的全局注册表
+# 将 agent_type 字符串映射到 Agent 类
 agent_registry: Dict[str, Type[BaseAgent]] = {}
 
 
 def register_agent(name: str) -> callable:
     """
-    Decorator to register an Agent class in the global registry.
+    用于在全局注册表中注册 Agent 类的装饰器。
 
-    The decorated class must be a subclass of BaseAgent and will be
-    stored in agent_registry with the provided name as the key.
+    被装饰的类必须是 BaseAgent 的子类，并会以提供的名称
+    作为键存储在 agent_registry 中。
 
     Args:
-        name: Unique identifier for this agent type (e.g., "chat_basic", "rag_agent")
+        name: 此 Agent 类型的唯一标识符（例如 "chat_basic", "rag_agent"）
 
     Returns:
-        Decorator function that registers the class and returns it unchanged
+        装饰器函数，注册类并原样返回
 
     Raises:
-        ValueError: If an agent with the same name is already registered
-        TypeError: If the decorated class is not a subclass of BaseAgent
+        ValueError: 如果同名的 Agent 已经被注册
+        TypeError: 如果被装饰的类不是 BaseAgent 的子类
 
-    Example:
+    示例:
         @register_agent("chat_basic")
         class ChatAgent(BaseAgent):
             def __init__(self, config: dict = None):
-                super().__init__(name="chat_basic", role="Chat")
+                super().__init__(name="chat_basic", role="对话助手")
     """
     def decorator(cls: Type[BaseAgent]) -> Type[BaseAgent]:
-        # Validate that the class is a BaseAgent subclass
+        # 验证该类是 BaseAgent 的子类
         if not issubclass(cls, BaseAgent):
             raise TypeError(
-                f"Agent '{name}' must inherit from BaseAgent, "
-                f"got {cls.__name__} ({cls.__bases__})"
+                f"Agent '{name}' 必须继承自 BaseAgent，"
+                f"但得到 {cls.__name__} ({cls.__bases__})"
             )
 
-        # Check for duplicate registration
+        # 检查重复注册
         if name in agent_registry:
             existing_class = agent_registry[name]
             raise ValueError(
-                f"Agent type '{name}' is already registered by {existing_class.__name__}. "
-                f"Cannot re-register with {cls.__name__}."
+                f"Agent 类型 '{name}' 已被 {existing_class.__name__} 注册。"
+                f"无法用 {cls.__name__} 重新注册。"
             )
 
-        # Register the class
+        # 注册该类
         agent_registry[name] = cls
         return cls
 
@@ -73,55 +73,54 @@ def register_agent(name: str) -> callable:
 
 def get_agent(agent_type: str, config: Optional[dict] = None) -> BaseAgent:
     """
-    Factory function to create an Agent instance by type.
+    通过类型创建 Agent 实例的工厂函数。
 
-    Looks up the Agent class in the registry and instantiates it with
-    the provided configuration.
+    在注册表中查找 Agent 类，并使用提供的配置实例化它。
 
     Args:
-        agent_type: The type identifier of the agent to create
-        config: Optional configuration dictionary passed to Agent's __init__
+        agent_type: 要创建的 Agent 的类型标识符
+        config: 可选的配置字典，传递给 Agent 的 __init__
 
     Returns:
-        An instance of the requested Agent class
+        请求的 Agent 类的实例
 
     Raises:
-        ValueError: If agent_type is not registered
-        Exception: Propagates any exception from Agent's __init__
+        ValueError: 如果 agent_type 未注册
+        Exception: 传播来自 Agent __init__ 的任何异常
 
-    Example:
+    示例:
         agent = get_agent("chat_basic", {"temperature": 0.7, "max_tokens": 2000})
-        result = await agent.execute("Hello!", {})
+        result = await agent.execute("你好！", {})
     """
     agent_class = agent_registry.get(agent_type)
 
     if agent_class is None:
         available = ", ".join(agent_registry.keys())
         raise ValueError(
-            f"Unknown agent type: '{agent_type}'. "
-            f"Available agents: {available or 'None'}"
+            f"未知的 agent 类型: '{agent_type}'。"
+            f"可用的 agents: {available or '无'}"
         )
 
-    # Instantiate with config (or empty dict if None)
+    # 使用配置实例化（如果为 None 则使用空字典）
     try:
         return agent_class(config or {})
     except Exception as e:
         raise RuntimeError(
-            f"Failed to instantiate agent '{agent_type}': {str(e)}"
+            f"实例化 agent '{agent_type}' 失败: {str(e)}"
         ) from e
 
 
 def list_agents() -> Dict[str, Dict[str, Any]]:
     """
-    List all registered agent types with their metadata.
+    列出所有已注册的 Agent 类型及其元数据。
 
-    Returns a dictionary mapping agent type to metadata including
-    the class name and whether it's currently available.
+    返回将 agent 类型映射到元数据的字典，包括类名
+    以及当前是否可用。
 
     Returns:
-        Dictionary with agent_type as key and dict with 'class_name' as value
+        以 agent_type 为键，包含 'class_name' 的字典为值的字典
 
-    Example:
+    示例:
         {
             "chat_basic": {"class_name": "ChatAgent"},
             "rag_agent": {"class_name": "RAGAgent"},
@@ -139,13 +138,13 @@ def list_agents() -> Dict[str, Dict[str, Any]]:
 
 def get_agent_info(agent_type: str) -> Optional[Dict[str, Any]]:
     """
-    Get detailed information about a specific registered agent.
+    获取特定已注册 Agent 的详细信息。
 
     Args:
-        agent_type: The type identifier of the agent
+        agent_type: Agent 的类型标识符
 
     Returns:
-        Dictionary with agent metadata (class_name, module) or None if not found
+        包含 Agent 元数据（class_name, module）的字典，如果未找到则为 None
     """
     cls = agent_registry.get(agent_type)
     if cls is None:
@@ -161,32 +160,32 @@ def get_agent_info(agent_type: str) -> Optional[Dict[str, Any]]:
 
 def is_registered(agent_type: str) -> bool:
     """
-    Check if an agent type is registered.
+    检查 Agent 类型是否已注册。
 
     Args:
-        agent_type: The type identifier to check
+        agent_type: 要检查的类型标识符
 
     Returns:
-        True if the agent type is registered, False otherwise
+        如果 Agent 类型已注册返回 True，否则返回 False
     """
     return agent_type in agent_registry
 
 
 def clear_registry() -> None:
     """
-    Clear all registered agents.
+    清除所有已注册的 Agents。
 
-    WARNING: This is primarily intended for testing. Using this in
-    production code will make all agents unavailable.
+    警告: 这主要用于测试。在生产代码中使用此函数
+    将导致所有 Agents 不可用。
     """
     agent_registry.clear()
 
 
 def get_registry_count() -> int:
     """
-    Get the number of registered agent types.
+    获取已注册 Agent 类型的数量。
 
     Returns:
-        Count of registered agent types
+        已注册 Agent 类型的计数
     """
     return len(agent_registry)

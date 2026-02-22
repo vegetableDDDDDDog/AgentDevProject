@@ -1,9 +1,8 @@
 """
-Session service for managing agent sessions, messages, and logs.
+会话服务 - 用于管理 Agent 会话、消息和日志。
 
-This module provides a service layer for database operations related to sessions,
-messages, and agent execution logs. All methods are synchronous and handle
-database session management automatically.
+本模块提供与会话、消息和 Agent 执行日志相关的数据库操作的服务层。
+所有方法都是同步的，并自动处理数据库会话管理。
 """
 
 from typing import Optional, List
@@ -16,19 +15,18 @@ from services.database import Session, Message, AgentLog, SessionLocal
 
 class SessionService:
     """
-    Service class for managing agent sessions, messages, and logs.
+    用于管理 Agent 会话、消息和日志的服务类。
 
-    This service provides methods for CRUD operations on sessions, messages,
-    and agent logs. All methods create their own database sessions and handle
-    transaction management automatically.
+    此服务提供会话、消息和 Agent 日志的 CRUD 操作方法。
+    所有方法都创建自己的数据库会话，并自动处理事务管理。
 
-    Example:
+    示例:
         service = SessionService()
         session = service.create_session("langchain", {"model": "gpt-4"})
-        message = service.add_message(session.id, "user", "Hello!")
+        message = service.add_message(session.id, "user", "你好！")
     """
 
-    # ==================== Session Management ====================
+    # ==================== 会话管理 ====================
 
     def create_session(
         self,
@@ -37,22 +35,22 @@ class SessionService:
         metadata: Optional[dict] = None
     ) -> Session:
         """
-        Create a new session with the specified agent type and configuration.
+        创建具有指定 Agent 类型和配置的新会话。
 
         Args:
-            agent_type: Type of agent (e.g., 'langchain', 'crewai')
-            config: Optional configuration dictionary for the agent
-            metadata: Optional metadata dictionary for the session
+            agent_type: Agent 类型（例如 'langchain', 'crewai'）
+            config: Agent 的可选配置字典
+            metadata: 会话的可选元数据字典
 
         Returns:
-            Session: The created Session object with auto-generated UUID
+            Session: 创建的会话对象，具有自动生成的 UUID
 
         Raises:
-            ValueError: If agent_type is empty or invalid
-            SQLAlchemyError: If database operation fails
+            ValueError: 如果 agent_type 为空或无效
+            SQLAlchemyError: 如果数据库操作失败
         """
         if not agent_type or not isinstance(agent_type, str):
-            raise ValueError("agent_type must be a non-empty string")
+            raise ValueError("agent_type 必须是非空字符串")
 
         db: SQLSession = SessionLocal()
         try:
@@ -67,25 +65,25 @@ class SessionService:
             return session
         except SQLAlchemyError as e:
             db.rollback()
-            raise ValueError(f"Failed to create session: {str(e)}")
+            raise ValueError(f"创建会话失败: {str(e)}")
         finally:
             db.close()
 
     def get_session(self, session_id: str) -> Optional[Session]:
         """
-        Retrieve a session by its ID.
+        通过 ID 检索会话。
 
         Args:
-            session_id: UUID of the session to retrieve
+            session_id: 要检索的会话的 UUID
 
         Returns:
-            Session object if found, None otherwise
+            如果找到返回 Session 对象，否则返回 None
 
         Raises:
-            ValueError: If session_id is empty
+            ValueError: 如果 session_id 为空
         """
         if not session_id:
-            raise ValueError("session_id must be provided")
+            raise ValueError("必须提供 session_id")
 
         db: SQLSession = SessionLocal()
         try:
@@ -96,23 +94,23 @@ class SessionService:
 
     def update_session(self, session_id: str, **kwargs) -> Optional[Session]:
         """
-        Update session fields.
+        更新会话字段。
 
         Args:
-            session_id: UUID of the session to update
-            **kwargs: Fields to update (config, meta, etc.)
+            session_id: 要更新的会话的 UUID
+            **kwargs: 要更新的字段（config, meta 等）
 
         Returns:
-            Updated Session object if found, None otherwise
+            如果找到返回更新的 Session 对象，否则返回 None
 
         Raises:
-            ValueError: If session_id is invalid or session not found
+            ValueError: 如果 session_id 无效或会话未找到
 
-        Note:
-            The updated_at timestamp is automatically updated by the ORM.
+        注意:
+            updated_at 时间戳由 ORM 自动更新。
         """
         if not session_id:
-            raise ValueError("session_id must be provided")
+            raise ValueError("必须提供 session_id")
 
         db: SQLSession = SessionLocal()
         try:
@@ -120,23 +118,23 @@ class SessionService:
             if not session:
                 return None
 
-            # Update allowed fields
+            # 更新允许的字段
             allowed_fields = {"config", "meta", "agent_type"}
             for key, value in kwargs.items():
                 if key == 'metadata':
-                    # Map 'metadata' to 'meta' column
+                    # 将 'metadata' 映射到 'meta' 列
                     session.meta = value
                 elif key in allowed_fields:
                     setattr(session, key, value)
                 else:
-                    raise ValueError(f"Cannot update field '{key}'")
+                    raise ValueError(f"无法更新字段 '{key}'")
 
             db.commit()
             db.refresh(session)
             return session
         except SQLAlchemyError as e:
             db.rollback()
-            raise ValueError(f"Failed to update session: {str(e)}")
+            raise ValueError(f"更新会话失败: {str(e)}")
         finally:
             db.close()
 
@@ -146,20 +144,20 @@ class SessionService:
         limit: int = 100
     ) -> List[Session]:
         """
-        List sessions, optionally filtered by agent type.
+        列出会话，可选择按 Agent 类型过滤。
 
         Args:
-            agent_type: Optional filter for agent type
-            limit: Maximum number of sessions to return (default: 100)
+            agent_type: Agent 类型的可选过滤器
+            limit: 要返回的会话最大数量（默认: 100）
 
         Returns:
-            List of Session objects ordered by created_at DESC
+            按创建时间降序排列的 Session 对象列表
 
         Raises:
-            ValueError: If limit is invalid
+            ValueError: 如果 limit 无效
         """
         if limit <= 0 or limit > 1000:
-            raise ValueError("limit must be between 1 and 1000")
+            raise ValueError("limit 必须在 1 到 1000 之间")
 
         db: SQLSession = SessionLocal()
         try:
@@ -173,7 +171,7 @@ class SessionService:
         finally:
             db.close()
 
-    # ==================== Message Management ====================
+    # ==================== 消息管理 ====================
 
     def add_message(
         self,
@@ -184,34 +182,34 @@ class SessionService:
         metadata: Optional[dict] = None
     ) -> Message:
         """
-        Add a message to a session.
+        向会话添加消息。
 
         Args:
-            session_id: UUID of the session
-            role: Message role ('user', 'assistant', or 'system')
-            content: Message content
-            tokens_used: Optional token usage count
-            metadata: Optional metadata dictionary
+            session_id: 会话的 UUID
+            role: 消息角色（'user', 'assistant' 或 'system'）
+            content: 消息内容
+            tokens_used: 可选的 Token 使用计数
+            metadata: 可选的元数据字典
 
         Returns:
-            Message: The created Message object
+            Message: 创建的 Message 对象
 
         Raises:
-            ValueError: If session not found or parameters invalid
+            ValueError: 如果会话未找到或参数无效
         """
         if not session_id:
-            raise ValueError("session_id must be provided")
+            raise ValueError("必须提供 session_id")
         if not role or role not in ['user', 'assistant', 'system']:
-            raise ValueError("role must be one of: 'user', 'assistant', 'system'")
+            raise ValueError("role 必须是以下之一: 'user', 'assistant', 'system'")
         if not content or not isinstance(content, str):
-            raise ValueError("content must be a non-empty string")
+            raise ValueError("content 必须是非空字符串")
 
         db: SQLSession = SessionLocal()
         try:
-            # Verify session exists
+            # 验证会话是否存在
             session = db.query(Session).filter(Session.id == session_id).first()
             if not session:
-                raise ValueError(f"Session with id '{session_id}' not found")
+                raise ValueError(f"未找到 ID 为 '{session_id}' 的会话")
 
             message = Message(
                 session_id=session_id,
@@ -228,7 +226,7 @@ class SessionService:
             raise
         except SQLAlchemyError as e:
             db.rollback()
-            raise ValueError(f"Failed to add message: {str(e)}")
+            raise ValueError(f"添加消息失败: {str(e)}")
         finally:
             db.close()
 
@@ -239,36 +237,36 @@ class SessionService:
         limit: int = 100
     ) -> List[Message]:
         """
-        Get messages for a session.
+        获取会话的消息。
 
         Args:
-            session_id: UUID of the session
-            role: Optional filter by role ('user', 'assistant', 'system')
-            limit: Maximum number of messages to return (default: 100)
+            session_id: 会话的 UUID
+            role: 按角色可选过滤（'user', 'assistant', 'system'）
+            limit: 要返回的消息最大数量（默认: 100）
 
         Returns:
-            List of Message objects ordered by created_at ASC (oldest first)
+            按创建时间升序排列的 Message 对象列表（最旧的在前）
 
         Raises:
-            ValueError: If session not found or parameters invalid
+            ValueError: 如果会话未找到或参数无效
         """
         if not session_id:
-            raise ValueError("session_id must be provided")
+            raise ValueError("必须提供 session_id")
         if limit <= 0 or limit > 1000:
-            raise ValueError("limit must be between 1 and 1000")
+            raise ValueError("limit 必须在 1 到 1000 之间")
 
         db: SQLSession = SessionLocal()
         try:
-            # Verify session exists
+            # 验证会话是否存在
             session = db.query(Session).filter(Session.id == session_id).first()
             if not session:
-                raise ValueError(f"Session with id '{session_id}' not found")
+                raise ValueError(f"未找到 ID 为 '{session_id}' 的会话")
 
             query = db.query(Message).filter(Message.session_id == session_id)
 
             if role:
                 if role not in ['user', 'assistant', 'system']:
-                    raise ValueError("role must be one of: 'user', 'assistant', 'system'")
+                    raise ValueError("role 必须是以下之一: 'user', 'assistant', 'system'")
                 query = query.filter(Message.role == role)
 
             messages = query.order_by(Message.created_at.asc()).limit(limit).all()
@@ -278,27 +276,27 @@ class SessionService:
 
     def get_session_history(self, session_id: str) -> dict:
         """
-        Get complete session history including session info and all messages.
+        获取完整的会话历史，包括会话信息和所有消息。
 
         Args:
-            session_id: UUID of the session
+            session_id: 会话的 UUID
 
         Returns:
-            Dictionary with keys:
-                - session: Session object data
-                - messages: List of Message objects ordered by created_at ASC
+            包含以下键的字典:
+                - session: Session 对象数据
+                - messages: 按创建时间升序排列的 Message 对象列表
 
         Raises:
-            ValueError: If session not found
+            ValueError: 如果会话未找到
         """
         if not session_id:
-            raise ValueError("session_id must be provided")
+            raise ValueError("必须提供 session_id")
 
         db: SQLSession = SessionLocal()
         try:
             session = db.query(Session).filter(Session.id == session_id).first()
             if not session:
-                raise ValueError(f"Session with id '{session_id}' not found")
+                raise ValueError(f"未找到 ID 为 '{session_id}' 的会话")
 
             messages = (
                 db.query(Message)
@@ -314,7 +312,7 @@ class SessionService:
         finally:
             db.close()
 
-    # ==================== Agent Logging ====================
+    # ==================== Agent 日志记录 ====================
 
     def log_execution(
         self,
@@ -326,39 +324,39 @@ class SessionService:
         execution_time_ms: Optional[int] = None
     ) -> AgentLog:
         """
-        Log an agent execution event.
+        记录 Agent 执行事件。
 
         Args:
-            session_id: Optional UUID of the session (can be None)
-            agent_type: Type of agent executed
-            task: Task description or identifier
-            status: Execution status ('success', 'error', 'pending', etc.)
-            error_message: Optional error message if status is 'error'
-            execution_time_ms: Optional execution time in milliseconds
+            session_id: 会话的可选 UUID（可以为 None）
+            agent_type: 执行的 Agent 类型
+            task: 任务描述或标识符
+            status: 执行状态（'success', 'error', 'pending' 等）
+            error_message: 如果状态为 'error' 时的可选错误消息
+            execution_time_ms: 可选的执行时间（毫秒）
 
         Returns:
-            AgentLog: The created AgentLog object
+            AgentLog: 创建的 AgentLog 对象
 
         Raises:
-            ValueError: If parameters invalid or session_id provided but not found
+            ValueError: 如果参数无效或提供了 session_id 但未找到
 
-        Note:
-            session_id can be None for agent executions without a session context.
+        注意:
+            对于没有会话上下文的 Agent 执行，session_id 可以为 None。
         """
         if not agent_type or not isinstance(agent_type, str):
-            raise ValueError("agent_type must be a non-empty string")
+            raise ValueError("agent_type 必须是非空字符串")
         if not task or not isinstance(task, str):
-            raise ValueError("task must be a non-empty string")
+            raise ValueError("task 必须是非空字符串")
         if not status or not isinstance(status, str):
-            raise ValueError("status must be a non-empty string")
+            raise ValueError("status 必须是非空字符串")
 
         db: SQLSession = SessionLocal()
         try:
-            # If session_id is provided, verify it exists
+            # 如果提供了 session_id，验证它是否存在
             if session_id:
                 session = db.query(Session).filter(Session.id == session_id).first()
                 if not session:
-                    raise ValueError(f"Session with id '{session_id}' not found")
+                    raise ValueError(f"未找到 ID 为 '{session_id}' 的会话")
 
             log = AgentLog(
                 session_id=session_id,
@@ -376,7 +374,7 @@ class SessionService:
             raise
         except SQLAlchemyError as e:
             db.rollback()
-            raise ValueError(f"Failed to log execution: {str(e)}")
+            raise ValueError(f"记录执行失败: {str(e)}")
         finally:
             db.close()
 
@@ -387,21 +385,21 @@ class SessionService:
         limit: int = 100
     ) -> List[AgentLog]:
         """
-        Get agent execution logs with optional filtering.
+        获取具有可选过滤的 Agent 执行日志。
 
         Args:
-            session_id: Optional filter by session ID
-            agent_type: Optional filter by agent type
-            limit: Maximum number of logs to return (default: 100)
+            session_id: 按会话 ID 的可选过滤器
+            agent_type: 按 Agent 类型的可选过滤器
+            limit: 要返回的日志最大数量（默认: 100）
 
         Returns:
-            List of AgentLog objects ordered by created_at DESC (newest first)
+            按创建时间降序排列的 AgentLog 对象列表（最新的在前）
 
         Raises:
-            ValueError: If limit is invalid
+            ValueError: 如果 limit 无效
         """
         if limit <= 0 or limit > 1000:
-            raise ValueError("limit must be between 1 and 1000")
+            raise ValueError("limit 必须在 1 到 1000 之间")
 
         db: SQLSession = SessionLocal()
         try:
