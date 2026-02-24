@@ -1,11 +1,13 @@
 """
 Sessions Router - Session Management
 
-Provides endpoints for managing conversation sessions.
+提供会话管理端点，支持租户隔离。
+所有会话操作都自动应用租户过滤，确保数据安全。
 """
 
 from typing import Optional
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session as SQLSession
 
 from api.schemas import (
     SessionCreateRequest,
@@ -13,32 +15,55 @@ from api.schemas import (
     SessionListResponse
 )
 from services.session_service import SessionService
+from services.tenant_query import TenantQuery
+from api.middleware.db_middleware import get_db
+from api.middleware.auth_middleware import get_current_auth_user, get_current_tenant_id
+from api.middleware.tenant_middleware import get_tenant_context, require_active_tenant
+
 
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
 
 
+# ============================================================================
+# 端点实现
+# ============================================================================
+
 @router.post(
     "",
     response_model=SessionResponse,
-    summary="Create a new session",
-    description="Create a new conversation session for an agent type"
+    summary="创建新会话",
+    description="为指定 Agent 类型创建新的对话会话"
 )
-async def create_session(request: SessionCreateRequest) -> SessionResponse:
+async def create_session(
+    request: SessionCreateRequest,
+    db: SQLSession = Depends(get_db),
+    auth_user: dict = Depends(get_current_auth_user),
+    tenant_id: str = Depends(get_current_tenant_id),
+    is_active: bool = Depends(require_active_tenant)
+) -> SessionResponse:
     """
-    Create a new conversation session.
+    创建新的对话会话
+
+    自动关联当前租户，确保租户隔离。
 
     Args:
-        request: SessionCreateRequest with agent_type and optional config/metadata
+        request: 会话创建请求（包含 agent_type 和可选配置）
+        db: 数据库会话
+        auth_user: 认证用户信息
+        tenant_id: 租户 ID
+        is_active: 租户激活状态
 
     Returns:
-        SessionResponse with created session details
+        SessionResponse: 创建的会话详情
     """
     service = SessionService()
 
+    # 创建会话（SessionService 会自动添加 tenant_id）
     session = service.create_session(
         agent_type=request.agent_type,
         config=request.config,
-        metadata=request.metadata
+        metadata=request.metadata,
+        tenant_id=tenant_id  # 传递租户 ID
     )
 
     return SessionResponse(
@@ -55,32 +80,49 @@ async def create_session(request: SessionCreateRequest) -> SessionResponse:
 @router.get(
     "",
     response_model=SessionListResponse,
-    summary="List sessions",
-    description="Get a list of sessions, optionally filtered by agent type"
+    summary="列出会话",
+    description="获取当前租户的所有会话列表，支持按 Agent 类型过滤"
 )
 async def list_sessions(
-    agent_type: Optional[str] = Query(None, description="Filter by agent type"),
-    limit: int = Query(100, description="Maximum number of sessions to return", ge=1, le=1000)
+    agent_type: Optional[str] = None,
+    limit: int = 100,
+    db: SQLSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant_id)
 ) -> SessionListResponse:
     """
-    List sessions with optional filtering.
+    列出会话
+
+    自动过滤当前租户的会话，防止跨租户数据泄露。
 
     Args:
-        agent_type: Optional filter for agent type
-        limit: Maximum number of sessions to return (default: 100)
+        agent_type: 可选的 Agent 类型过滤
+        limit: 最大返回数量（默认 100，最大 1000）
+        db: 数据库会话
+        tenant_id: 租户 ID
 
     Returns:
-        SessionListResponse with list of sessions
+        SessionListResponse: 会话列表
     """
+    # 使用 TenantQuery 自动过滤租户
+    query = TenantQuery.filter_by_tenant(db, Session, tenant_id)
+
+    if agent_type:
+        query = query.filter(Session.agent_type == agent_type)
+
+    # 按创建时间倒序
+    query = query.order_by(Session.created_at.desc())
+
+    # 限制数量
+    if limit > 1000:
+        limit = 1000
+    sessions = query.limit(limit).all()
+
+    # 获取消息计数
     service = SessionService()
-
-    sessions = service.list_sessions(agent_type=agent_type, limit=limit)
-
-    # Get message counts without lazy loading issues
     result_sessions = []
     for s in sessions:
-        # Get message count for this session
-        messages = service.get_messages(s.id, limit=1000)
+        # 验证会话属于当前租户（TenantQuery 已保证）
+        messages = service.get_messages(s.id, tenant_id=tenant_id, limit=1000)
         message_count = len(messages)
 
         result_sessions.append(
@@ -104,34 +146,39 @@ async def list_sessions(
 @router.get(
     "/{session_id}",
     response_model=SessionResponse,
-    summary="Get session details",
-    description="Get detailed information about a specific session"
+    summary="获取会话详情",
+    description="获取指定会话的详细信息，自动验证租户权限"
 )
-async def get_session(session_id: str) -> SessionResponse:
+async def get_session(
+    session_id: str,
+    db: SQLSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant_id)
+) -> SessionResponse:
     """
-    Get session details.
+    获取会话详情
+
+    使用 TenantQuery.get_by_id_or_404 自动验证租户权限，
+    如果会话不属于当前租户，返回 404。
 
     Args:
-        session_id: Session UUID
+        session_id: 会话 UUID
+        db: 数据库会话
+        tenant_id: 租户 ID
 
     Returns:
-        SessionResponse with session details
+        SessionResponse: 会话详情
 
     Raises:
-        HTTPException: If session not found
+        HTTPException 404: 会话不存在或不属于当前租户
     """
+    # 使用 TenantQuery 自动验证租户权限
+    session = TenantQuery.get_by_id_or_404(
+        db, Session, session_id, tenant_id, "会话"
+    )
+
+    # 获取消息
     service = SessionService()
-
-    session = service.get_session(session_id)
-
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session '{session_id}' not found"
-        )
-
-    # Get message count
-    messages = service.get_messages(session_id, limit=1000)
+    messages = service.get_messages(session_id, tenant_id=tenant_id, limit=1000)
 
     return SessionResponse(
         id=session.id,
@@ -146,38 +193,43 @@ async def get_session(session_id: str) -> SessionResponse:
 
 @router.delete(
     "/{session_id}",
-    summary="Delete a session",
-    description="Delete a session and all its messages"
+    summary="删除会话",
+    description="删除指定会话及其所有消息，自动验证租户权限"
 )
-async def delete_session(session_id: str) -> dict:
+async def delete_session(
+    session_id: str,
+    db: SQLSession = Depends(get_db),
+    tenant_id: str = Depends(get_current_tenant_id)
+) -> dict:
     """
-    Delete a session.
+    删除会话
 
-    Note: This endpoint is not fully implemented in the SessionService yet.
-    It's included for API completeness.
+    使用 TenantQuery 自动验证租户权限。
 
     Args:
-        session_id: Session UUID
+        session_id: 会话 UUID
+        db: 数据库会话
+        tenant_id: 租户 ID
 
     Returns:
-        Success message
+        删除成功消息
 
     Raises:
-        HTTPException: If session not found
+        HTTPException 404: 会话不存在或不属于当前租户
     """
-    service = SessionService()
+    # 使用 TenantQuery 自动验证租户权限
+    session = TenantQuery.get_by_id_or_404(
+        db, Session, session_id, tenant_id, "会话"
+    )
 
-    session = service.get_session(session_id)
+    # TODO: 实现删除逻辑（需要在 SessionService 中添加）
+    # service.delete_session(session_id, tenant_id)
 
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session '{session_id}' not found"
-        )
-
-    # TODO: Implement delete in SessionService
-    # For now, return a message
     return {
-        "message": "Session deletion not yet implemented",
+        "message": "会话删除功能待实现",
         "session_id": session_id
     }
+
+
+# 导入 Session 模型（用于类型提示）
+from services.database import Session

@@ -32,7 +32,8 @@ class SessionService:
         self,
         agent_type: str,
         config: Optional[dict] = None,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
+        tenant_id: Optional[str] = None
     ) -> Session:
         """
         创建具有指定 Agent 类型和配置的新会话。
@@ -41,6 +42,7 @@ class SessionService:
             agent_type: Agent 类型（例如 'langchain', 'crewai'）
             config: Agent 的可选配置字典
             metadata: 会话的可选元数据字典
+            tenant_id: 租户 ID（用于多租户隔离）
 
         Returns:
             Session: 创建的会话对象，具有自动生成的 UUID
@@ -57,7 +59,8 @@ class SessionService:
             session = Session(
                 agent_type=agent_type,
                 config=config,
-                meta=metadata
+                meta=metadata,
+                tenant_id=tenant_id  # 租户 ID
             )
             db.add(session)
             db.commit()
@@ -179,7 +182,8 @@ class SessionService:
         role: str,
         content: str,
         tokens_used: Optional[int] = None,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
+        tenant_id: Optional[str] = None
     ) -> Message:
         """
         向会话添加消息。
@@ -190,6 +194,7 @@ class SessionService:
             content: 消息内容
             tokens_used: 可选的 Token 使用计数
             metadata: 可选的元数据字典
+            tenant_id: 租户 ID（用于多租户隔离）
 
         Returns:
             Message: 创建的 Message 对象
@@ -206,17 +211,25 @@ class SessionService:
 
         db: SQLSession = SessionLocal()
         try:
-            # 验证会话是否存在
-            session = db.query(Session).filter(Session.id == session_id).first()
+            # 验证会话是否存在（且租户匹配）
+            session_query = db.query(Session).filter(Session.id == session_id)
+            if tenant_id:
+                session_query = session_query.filter(Session.tenant_id == tenant_id)
+
+            session = session_query.first()
             if not session:
                 raise ValueError(f"未找到 ID 为 '{session_id}' 的会话")
+
+            # 获取租户 ID（优先使用参数，否则从会话获取）
+            message_tenant_id = tenant_id or session.tenant_id
 
             message = Message(
                 session_id=session_id,
                 role=role,
                 content=content,
                 tokens_used=tokens_used,
-                meta=metadata
+                meta=metadata,
+                tenant_id=message_tenant_id  # 租户 ID
             )
             db.add(message)
             db.commit()
@@ -234,7 +247,8 @@ class SessionService:
         self,
         session_id: str,
         role: Optional[str] = None,
-        limit: int = 100
+        limit: int = 100,
+        tenant_id: Optional[str] = None
     ) -> List[Message]:
         """
         获取会话的消息。
@@ -243,6 +257,7 @@ class SessionService:
             session_id: 会话的 UUID
             role: 按角色可选过滤（'user', 'assistant', 'system'）
             limit: 要返回的消息最大数量（默认: 100）
+            tenant_id: 租户 ID（用于验证租户权限，可选）
 
         Returns:
             按创建时间升序排列的 Message 对象列表（最旧的在前）
@@ -257,12 +272,20 @@ class SessionService:
 
         db: SQLSession = SessionLocal()
         try:
-            # 验证会话是否存在
-            session = db.query(Session).filter(Session.id == session_id).first()
+            # 构建查询 - 验证会话存在且租户匹配
+            session_query = db.query(Session).filter(Session.id == session_id)
+            if tenant_id:
+                session_query = session_query.filter(Session.tenant_id == tenant_id)
+
+            session = session_query.first()
             if not session:
                 raise ValueError(f"未找到 ID 为 '{session_id}' 的会话")
 
             query = db.query(Message).filter(Message.session_id == session_id)
+
+            # 租户隔离
+            if tenant_id:
+                query = query.filter(Message.tenant_id == tenant_id)
 
             if role:
                 if role not in ['user', 'assistant', 'system']:
@@ -321,7 +344,8 @@ class SessionService:
         task: str,
         status: str,
         error_message: Optional[str] = None,
-        execution_time_ms: Optional[int] = None
+        execution_time_ms: Optional[int] = None,
+        tenant_id: Optional[str] = None
     ) -> AgentLog:
         """
         记录 Agent 执行事件。
@@ -333,6 +357,7 @@ class SessionService:
             status: 执行状态（'success', 'error', 'pending' 等）
             error_message: 如果状态为 'error' 时的可选错误消息
             execution_time_ms: 可选的执行时间（毫秒）
+            tenant_id: 租户 ID（用于多租户隔离）
 
         Returns:
             AgentLog: 创建的 AgentLog 对象
@@ -352,11 +377,19 @@ class SessionService:
 
         db: SQLSession = SessionLocal()
         try:
-            # 如果提供了 session_id，验证它是否存在
+            # 如果提供了 session_id，验证它是否存在（且租户匹配）
             if session_id:
-                session = db.query(Session).filter(Session.id == session_id).first()
+                session_query = db.query(Session).filter(Session.id == session_id)
+                if tenant_id:
+                    session_query = session_query.filter(Session.tenant_id == tenant_id)
+
+                session = session_query.first()
                 if not session:
                     raise ValueError(f"未找到 ID 为 '{session_id}' 的会话")
+
+                # 如果没有显式提供 tenant_id，从会话获取
+                if not tenant_id:
+                    tenant_id = session.tenant_id
 
             log = AgentLog(
                 session_id=session_id,
@@ -364,7 +397,8 @@ class SessionService:
                 task=task,
                 status=status,
                 error_message=error_message,
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
+                tenant_id=tenant_id  # 租户 ID
             )
             db.add(log)
             db.commit()

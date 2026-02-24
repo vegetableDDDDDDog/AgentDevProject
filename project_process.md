@@ -674,3 +674,140 @@ $ python3 -c "from services.auth_service import AuthService; ..."
 
 *更新时间: 2026-02-14*
 *状态: 准备实施*
+
+---
+
+### ✅ Task #3: 租户隔离服务 (2026-02-24)
+
+#### 完成内容
+
+**1. 租户服务核心** (`services/tenant_service.py`)
+
+核心功能：
+- ✅ `TenantService` 类（完整实现）
+- ✅ `TenantContext` 数据类 - 租户上下文
+- ✅ `TenantQuotaInfo` 数据类 - 配额信息
+- ✅ `get_tenant_context()` - 获取租户上下文
+- ✅ `check_user_quota()` - 检查用户数配额（MVP）
+- ✅ `get_current_user_count()` - 获取当前用户数
+- ✅ `has_feature()` - 特性检查
+- ✅ `get_setting()` - 获取配置项
+
+**2. 租户感知查询助手** (`services/tenant_query.py`)
+
+核心功能：
+- ✅ `TenantQuery.filter_by_tenant()` - 自动添加租户过滤
+- ✅ `TenantQuery.get_by_id()` - 获取资源（自动验证租户）
+- ✅ `TenantQuery.get_by_id_or_404()` - HTTP 友好的资源获取
+- ✅ `TenantQuery.list_all()` - 列出租户资源
+- ✅ `TenantQuery.count()` - 统计租户资源数量
+- ✅ 便捷函数：`get_tenant_sessions()`, `get_tenant_messages()`, `get_tenant_agent_logs()`
+
+**3. 数据库会话中间件** (`api/middleware/db_middleware.py`)
+
+- ✅ `db_middleware()` - 为每个请求创建数据库会话
+- ✅ `get_db()` - 依赖注入函数
+
+**4. 租户隔离中间件** (`api/middleware/tenant_middleware.py`)
+
+- ✅ `tenant_middleware()` - 租户上下文注入和状态检查
+- ✅ `get_tenant_context()` - 依赖注入函数
+- ✅ `require_active_tenant()` - 要求租户激活
+- ✅ `get_current_tenant_id()` - 获取租户 ID
+
+**5. 主应用集成** (`api/main.py`)
+
+- ✅ 注册数据库中间件（第 96 行）
+- ✅ 注册租户隔离中间件（第 101 行）
+- ✅ 中间件顺序：CORS → DB → Tenant → Log
+
+**6. Sessions 路由更新** (`api/routers/sessions.py`)
+
+- ✅ 所有端点添加租户隔离依赖
+- ✅ 使用 `TenantQuery` 自动过滤租户数据
+- ✅ 使用 `get_by_id_or_404` 自动验证租户权限
+- ✅ 更新 `create_session()` 接受 `tenant_id` 参数
+
+**7. SessionService 更新** (`services/session_service.py`)
+
+- ✅ `create_session()` - 添加 `tenant_id` 参数
+- ✅ `get_messages()` - 添加 `tenant_id` 参数（验证租户）
+- ✅ `add_message()` - 添加 `tenant_id` 参数
+- ✅ `log_execution()` - 添加 `tenant_id` 参数
+
+**8. 测试和验证** (`tests/test_tenant_isolation.py`)
+
+测试覆盖：
+- ✅ `TestTenantService` - 租户服务测试（7 个测试用例）
+- ✅ `TestTenantQuery` - 租户查询测试（3 个测试用例）
+
+验证结果：
+```bash
+$ python verify_tenant_isolation.py
+✅ TenantService 所有测试通过!
+✅ TenantQuery 所有测试通过!
+🎉 所有测试通过!
+```
+
+#### 技术特性
+
+**租户上下文管理**：
+- 自动从 JWT token 提取 tenant_id
+- 查询租户信息和配额
+- 检查租户状态（active/suspended/deleted）
+- 注入到 request.state.tenant_context
+
+**数据访问控制**：
+- 所有数据库查询自动过滤 tenant_id
+- 防止跨租户数据访问
+- 使用 TenantQuery 辅助类简化代码
+
+**配额管理（MVP）**：
+- 用户数配额检查
+- 配额超限抛出 QuotaExceededException
+- 支持后续扩展（Agent/会话/Token 配额）
+
+**中间件架构**：
+```
+请求 → CORS → DB中间件 → 认证中间件 → 租户中间件 → 业务逻辑
+                        ↓              ↓
+                    request.state.db  request.state.tenant_context
+```
+
+#### 文件结构
+
+```
+services/
+├── tenant_service.py      # NEW - 租户服务核心
+├── tenant_query.py        # NEW - 租户感知查询助手
+└── session_service.py     # UPDATE - 添加租户支持
+
+api/middleware/
+├── db_middleware.py       # NEW - 数据库会话中间件
+├── tenant_middleware.py   # NEW - 租户隔离中间件
+└── __init__.py            # UPDATE - 导出新中间件
+
+api/
+├── main.py                # UPDATE - 集成中间件
+└── routers/
+    └── sessions.py        # UPDATE - 应用租户隔离
+
+tests/
+└── test_tenant_isolation.py  # NEW - 租户隔离测试
+```
+
+#### MVP 范围
+
+**已实现**：
+- ✅ 租户上下文管理
+- ✅ 租户状态检查
+- ✅ 租户隔离中间件
+- ✅ 自动 tenant_id 过滤
+- ✅ 用户数配额检查
+
+**暂不包含**（后续阶段）：
+- ⏳ Agent/会话/Token 配额
+- ⏳ 配额使用统计
+- ⏳ 配额自动重置
+- ⏳ 性能优化（缓存）
+

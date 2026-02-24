@@ -99,6 +99,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ============================================================================
+# 自定义中间件
+# ============================================================================
+
+# 数据库会话中间件（必须在其他中间件之前）
+from api.middleware.db_middleware import db_middleware
+app.middleware("http")(db_middleware)
+
+# 租户隔离中间件（依赖数据库中间件）
+from api.middleware.tenant_middleware import tenant_middleware
+app.middleware("http")(tenant_middleware)
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable) -> JSONResponse:
