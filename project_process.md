@@ -811,3 +811,167 @@ tests/
 - ⏳ 配额自动重置
 - ⏳ 性能优化（缓存）
 
+
+---
+
+### ✅ Task #4: 真实 LLM 集成 (2026-02-24)
+
+#### 完成内容
+
+**1. LLM 服务抽象层** (`services/llm_service.py`)
+
+核心功能：
+- ✅ `LLMProvider` 抽象基类
+- ✅ `OpenAICompatibleProvider` - OpenAI 兼容提供商
+  - 支持智谱 AI、OpenAI、百度文心等
+  - 使用 LangChain ChatOpenAI 作为底层
+- ✅ `LLMService` 工厂类
+  - 从租户配置创建 Provider
+  - 支持动态切换 LLM 提供商
+- ✅ 同步和异步聊天接口
+- ✅ 流式输出支持
+- ✅ 多轮对话历史管理
+
+**2. Token 统计服务** (`services/token_service.py`)
+
+核心功能：
+- ✅ `TokenService` 类
+- ✅ `record_token_usage()` - 记录 Token 使用到数据库
+- ✅ `get_monthly_usage()` - 获取月度 Token 使用量
+- ✅ `get_session_usage()` - 获取会话 Token 使用量
+- ✅ `get_daily_usage()` - 获取每日 Token 使用量
+- ✅ `get_usage_stats()` - 获取 Token 使用统计
+
+**3. 真实 LLM Agents** (`agents/llm_agents.py`)
+
+核心功能：
+- ✅ `LLMChatAgent` - 多轮对话 LLM Agent
+  - 支持流式输出
+  - 对话历史管理
+  - 租户上下文集成
+- ✅ `LLMSingleTurnAgent` - 单轮 LLM Agent
+  - 独立调用，不使用历史
+  - 适用于一次性任务
+
+**4. Chat 路由更新** (`api/routers/chat.py`)
+
+核心更新：
+- ✅ 集成真实 LLM Agent
+- ✅ 支持流式 SSE 输出
+- ✅ 租户隔离验证
+- ✅ 租户 LLM 配置验证
+- ✅ 对话历史管理
+- ✅ Token 使用记录
+
+**5. 架构特性**
+
+**多提供商支持**：
+```python
+# 智谱 AI
+{
+  "llm_provider": "openai-compatible",
+  "llm_base_url": "https://open.bigmodel.cn/api/paas/v4/",
+  "llm_api_key": "your-zhipu-key",
+  "llm_model": "glm-4"
+}
+
+# OpenAI（兼容）
+{
+  "llm_provider": "openai-compatible",
+  "llm_base_url": "https://api.openai.com/v1/",
+  "llm_api_key": "your-openai-key",
+  "llm_model": "gpt-4"
+}
+```
+
+**租户级别配置**：
+- 每个租户可配置自己的 API Key
+- 每个租户可选择不同的模型
+- 支持租户级 Token 统计
+
+**流式输出**：
+- 真实 LLM 流式输出（直接传递）
+- 模拟 Agent 分块输出
+- SSE 协议兼容
+
+**Token 统计**：
+- 自动记录 Token 使用
+- 租户级别统计
+- 会话级别统计
+
+#### MVP 范围
+
+**已实现**：
+- ✅ 基础聊天（同步）
+- ✅ 流式输出（SSE）
+- ✅ Token 统计（记录）
+- ✅ 租户配置存储
+- ✅ 多轮对话
+- ✅ 智谱 AI 集成
+
+**暂不包含**（后续阶段）：
+- ⏳ Token 计费（扣减配额）
+- ⏳ 多模型切换（UI）
+- ⏳ 配额限制（检查配额）
+- ⏳ OpenAI Provider
+- ⏳ 其他国产模型
+
+#### 文件结构
+
+```
+services/
+├── llm_service.py         # NEW - LLM 服务抽象
+├── token_service.py       # NEW - Token 统计服务
+
+agents/
+└── llm_agents.py          # NEW - 真实 LLM Agents
+
+api/routers/
+└── chat.py                # UPDATE - 集成真实 LLM
+
+tests/
+└── (TODO)                 # TODO - LLM 集成测试
+
+verification/
+└── verify_llm_integration.py  # NEW - 验证脚本
+```
+
+#### 使用示例
+
+**配置租户 LLM**：
+```sql
+UPDATE tenants 
+SET settings = json_set(settings, '$.llm_api_key', 'your-api-key')
+WHERE id = 'tenant-id';
+```
+
+**调用 LLM Chat**：
+```bash
+POST /api/v1/chat/completions
+{
+  "agent_type": "llm_chat",
+  "message": "你好"
+}
+```
+
+#### 验证结果
+
+**模块导入测试**：
+```bash
+$ python -c "from services.llm_service import LLMService; ..."
+✅ 所有模块导入成功!
+✅ LLMService: <class 'services.llm_service.LLMService'>
+✅ TokenService: <class 'services.token_service.TokenService'>
+✅ LLMChatAgent: <class 'agents.llm_agents.LLMChatAgent'>
+✅ LLMSingleTurnAgent: <class 'agents.llm_agents.LLMSingleTurnAgent'>
+```
+
+**Agent 注册测试**：
+```bash
+$ python -c "from services.agent_factory import list_agents; ..."
+✅ Agent 注册检查:
+   已注册 Agents: ['llm_chat', 'llm_single_turn']
+   llm_chat: True
+   llm_single_turn: True
+```
+

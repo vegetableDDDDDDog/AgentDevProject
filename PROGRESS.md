@@ -119,14 +119,14 @@
 - [x] 数据库迁移（多租户模型）
 - [x] 认证服务（JWT + OAuth2）
 - [x] 租户隔离服务
-- [ ] LLM集成（智谱AI）
+- [x] LLM集成（智谱AI）
 - [ ] 前端UI
 - [ ] 监控体系
 - [ ] 部署配置
 
-**当前阶段**: 租户隔离服务已完成 ✅
-**下一阶段**: 实现真实 LLM 集成
-**进度**: 3/6 核心任务完成 (50%)
+**当前阶段**: LLM 集成已完成 ✅
+**下一阶段**: 实现前端 UI
+**进度**: 4/6 核心任务完成 (66.7%)
 
 ---
 
@@ -195,3 +195,22 @@ cat docs/plans/2026-02-14-agent-paas-phase2-design.md
 - 创建 worktree: `.worktrees/phase2-multi-tenant`
 - 提交设计文档到master分支
 - 创建本进度跟踪文件
+
+### 2026-02-24
+- ✅ 完成租户隔离服务（Task #3）
+  - 实现 TenantService 租户服务核心
+  - 实现 TenantQuery 租户感知查询助手
+  - 创建数据库会话中间件（db_middleware）
+  - 创建租户隔离中间件（tenant_middleware）
+  - 更新 sessions 路由应用租户隔离
+  - 更新 SessionService 支持租户隔离
+  - 所有测试通过
+
+- ✅ 完成 LLM 集成（Task #4）
+  - 实现 LLMService 抽象层（支持多提供商）
+  - 实现 OpenAICompatibleProvider（支持智谱 AI）
+  - 实现 TokenService Token 统计服务
+  - 创建 LLMChatAgent 和 LLMSingleTurnAgent
+  - 更新 chat 路由集成真实 LLM 和流式输出
+  - 支持租户级别 LLM 配置
+
