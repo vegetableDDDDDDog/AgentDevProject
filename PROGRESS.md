@@ -121,12 +121,12 @@
 - [x] 租户隔离服务
 - [x] LLM集成（智谱AI）
 - [x] 前端UI
-- [ ] 监控体系
+- [x] 监控体系
 - [ ] 部署配置
 
-**当前阶段**: 前端 UI 已完成 ✅
-**下一阶段**: 实现监控体系（可选）
-**进度**: 5/6 核心任务完成 (83.3%)
+**当前阶段**: 监控体系已完成 ✅
+**下一阶段**: 部署配置（可选）
+**进度**: 6/6 核心任务完成 (100%)
 
 ---
 
@@ -222,4 +222,11 @@ cat docs/plans/2026-02-14-agent-paas-phase2-design.md
   - 集成 API 服务层
   - 实现受保护路由
   - 支持多 Agent 切换
+
+- ✅ 完成监控体系（Task #6）
+  - 实现 MetricsStore 指标存储系统
+  - 实现 Counter、Histogram、Gauge 指标类型
+  - 创建指标收集中间件（metrics_middleware）
+  - 创建指标 API 端点（/metrics、/health、/stats）
+  - 集成到主应用并注册 LLM agents
 

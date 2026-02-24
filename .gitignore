@@ -48,3 +48,7 @@ test_chroma_db/
 # OS
 .DS_Store
 Thumbs.db
+# Frontend dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/.env

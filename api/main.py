@@ -26,9 +26,10 @@ from services.agent_factory import list_agents
 
 # 导入 agents 以触发注册
 import agents.simple_agents  # 注册: echo_agent, mock_chat_agent, counter_agent, error_agent
+import agents.llm_agents  # 注册: llm_chat, llm_single_turn
 
 # 导入认证路由和异常处理器
-from api.routers import auth
+from api.routers import auth, metrics
 
 
 # 配置日志
@@ -98,6 +99,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 监控中间件
+from api.middleware.metrics_middleware import metrics_middleware
+app.middleware("http")(metrics_middleware)
 
 # ============================================================================
 # 自定义中间件
@@ -265,6 +270,7 @@ app.include_router(chat.router, prefix=settings.api_prefix, tags=["Chat"])
 app.include_router(agents.router, prefix=settings.api_prefix, tags=["Agents"])
 app.include_router(sessions.router, prefix=settings.api_prefix, tags=["Sessions"])
 app.include_router(auth.router, prefix=settings.api_prefix, tags=["Auth"])
+app.include_router(metrics.router, prefix=settings.api_prefix, tags=["Metrics"])
 
 
 # ============================================================================

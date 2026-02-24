@@ -6,7 +6,7 @@
 """
 
 from typing import Optional
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from services.auth_service import AuthService
