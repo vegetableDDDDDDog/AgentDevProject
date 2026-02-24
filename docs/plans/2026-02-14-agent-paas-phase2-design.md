@@ -80,14 +80,20 @@
 
 | 组件 | Phase 1 | Phase 2 | 升级原因 |
 |------|---------|---------|----------|
-| 数据库 | SQLite | **PostgreSQL** | 生产级，支持并发，事务安全 |
-| 缓存 | 无 | **Redis** | 会话存储，速率限制，分布式锁 |
+| 数据库 | SQLite | **SQLite (继续使用)** | 完全满足需求，零迁移成本，专注核心功能 |
+| 缓存 | 无 | **Redis** (可选) | 会话存储，速率限制，分布式锁 |
 | LLM | Mock | **真实LLM集成** | 支持智谱AI、OpenAI等多模型 |
 | 认证 | API Key | **JWT + OAuth2** | 标准化认证，支持第三方登录 |
-| 多租户 | 无 | **Schema隔离** | 企业级数据隔离 |
+| 多租户 | 无 | **应用层隔离** | 企业级数据隔离（tenant_id字段） |
 | 前端 | 无 | **React + TypeScript** | 现代化Web UI |
 | 监控 | 基础日志 | **Prometheus + Grafana** | 可观测性，指标可视化 |
 | 追踪 | 无 | **OpenTelemetry** | 分布式追踪 |
+
+**数据库选型说明**:
+- ✅ **Phase 2 继续使用 SQLite** - 详见 `docs/plans/2026-02-14-database-comparison.md`
+- ✅ SQLite 完全满足多租户、认证、配额管理等所有功能需求
+- ✅ 节省 3-5天迁移时间，专注核心功能开发
+- ✅ 未来如需迁移，SQLAlchemy 抽象层保证低迁移成本
 
 ---
 
@@ -688,66 +694,108 @@ async def chat_completion(request: ChatRequest):
 
 ---
 
-## 4. 数据库迁移策略
+## 4. 数据库扩展策略
 
-### 4.1 SQLite → PostgreSQL
+### 4.1 SQLite 多租户扩展
 
-**迁移工具**: `pgloader` 或 `alembic`
+**扩展方式**: 应用层租户隔离 + 表结构扩展
 
-```bash
-# 使用pgloader迁移
-pgloader sqlite:///home/wineash/PycharmProjects/AgentDevProject/.worktrees/phase1-api/data/agent_platform.db \
-          postgresql://user:pass@localhost/agent_platform
-
-# 或使用alembic
-alembic upgrade head
-```
-
-**Alembic迁移脚本**:
+**新增表** (使用 SQLite + SQLAlchemy):
 
 ```python
-# alembic/versions/001_multi_tenant.py
-from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
+# services/database.py (扩展)
 
-def upgrade():
-    # 创建租户表
-    op.create_table(
-        'tenants',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('name', sa.String(100), nullable=False, unique=True),
-        sa.Column('display_name', sa.String(200), nullable=False),
-        sa.Column('plan', sa.String(50), nullable=False),
-        sa.Column('status', sa.String(20), server_default='active'),
-        sa.Column('settings', postgresql.JSONB),
-        sa.Column('created_at', sa.TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP')),
-        sa.Column('updated_at', sa.TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP'))
+class Tenant(Base):
+    """租户表"""
+    __tablename__ = "tenants"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(100), nullable=False, unique=True)
+    display_name = Column(String(200), nullable=False)
+    plan = Column(String(50), nullable=False)  # 'free', 'pro', 'enterprise'
+    status = Column(String(20), default='active')
+    settings = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+class User(Base):
+    """用户表"""
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    email = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(50), nullable=False)  # 'admin', 'user', 'viewer'
+    status = Column(String(20), default='active')
+    last_login_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationships
+    tenant = relationship("Tenant", back_populates="users")
+
+    __table_args__ = (
+        UniqueConstraint('tenant_id', 'email', name='uq_tenant_email'),
     )
 
-    # 创建用户表
-    op.create_table(
-        'users',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id', ondelete='CASCADE')),
-        sa.Column('email', sa.String(255), nullable=False),
-        sa.Column('password_hash', sa.String(255), nullable=False),
-        sa.Column('role', sa.String(50), nullable=False),
-        sa.Column('status', sa.String(20), server_default='active'),
-        sa.Column('last_login_at', sa.TIMESTAMP),
-        sa.Column('created_at', sa.TIMESTAMP, server_default=sa.text('CURRENT_TIMESTAMP')),
-        sa.UniqueConstraint('tenant_id', 'email', name='uq_tenant_email')
-    )
+class APIKey(Base):
+    """API密钥表"""
+    __tablename__ = "api_keys"
 
-    # 添加租户ID到现有表
-    op.add_column('sessions', sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id')))
-    op.add_column('messages', sa.Column('tenant_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('tenants.id')))
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    key_hash = Column(String(255), nullable=False, unique=True)
+    name = Column(String(100), nullable=True)
+    scopes = Column(JSON, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    last_used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
-def downgrade():
-    op.drop_table('users')
-    op.drop_table('tenants')
-    op.drop_column('sessions', 'tenant_id')
-    op.drop_column('messages', 'tenant_id')
+class TenantQuota(Base):
+    """租户配额表"""
+    __tablename__ = "tenant_quotas"
+
+    tenant_id = Column(String, ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True)
+    max_users = Column(Integer, default=5)
+    max_agents = Column(Integer, default=10)
+    max_sessions_per_day = Column(Integer, default=100)
+    max_tokens_per_month = Column(Integer, default=1000000)
+    current_month_tokens = Column(Integer, default=0)
+    reset_date = Column(Date, nullable=False)
+
+# 扩展现有表 (添加 tenant_id)
+# 注意：需要数据迁移脚本为现有数据添加默认租户
+```
+
+**数据迁移** (为现有数据添加租户):
+
+```python
+# migrations/add_tenant_support.py
+def upgrade_add_tenant_support():
+    """为现有数据库添加多租户支持"""
+
+    # 1. 添加 tenant_id 列到现有表
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE sessions ADD COLUMN tenant_id STRING REFERENCES tenants(id)"))
+        conn.execute(text("ALTER TABLE messages ADD COLUMN tenant_id STRING REFERENCES tenants(id)"))
+        conn.execute(text("ALTER TABLE agent_logs ADD COLUMN tenant_id STRING REFERENCES tenants(id)"))
+
+        # 2. 创建默认租户
+        default_tenant_id = str(uuid.uuid4())
+        conn.execute(text("""
+            INSERT INTO tenants (id, name, display_name, plan, status)
+            VALUES (:id, 'default', 'Default Tenant', 'free', 'active')
+        """), {"id": default_tenant_id})
+
+        # 3. 更新现有数据关联到默认租户
+        conn.execute(text("UPDATE sessions SET tenant_id = :tid WHERE tenant_id IS NULL"), {"tid": default_tenant_id})
+        conn.execute(text("UPDATE messages SET tenant_id = :tid WHERE tenant_id IS NULL"), {"tid": default_tenant_id})
+        conn.execute(text("UPDATE agent_logs SET tenant_id = :tid WHERE tenant_id IS NULL"), {"tid": default_tenant_id})
+
+        conn.commit()
+
+    print("✅ 多租户支持已添加，现有数据已关联到默认租户")
 ```
 
 ---
@@ -819,10 +867,11 @@ AgentDevProject/
 
 ## 6. 实施计划
 
-### Week 1-2: 数据库迁移与多租户基础
-- Day 1-3: PostgreSQL配置 + Alembic迁移
-- Day 4-7: 租户/用户模型 + 认证服务
-- Day 8-10: 租户中间件 + 行级安全
+### Week 1-2: 多租户基础与认证
+- Day 1-2: SQLite多租户扩展 (Tenant/User/APIKey模型）
+- Day 3-5: JWT认证服务
+- Day 6-8: 租户隔离中间件
+- Day 9-10: 配额管理服务
 - Day 11-14: 测试与验证
 
 ### Week 3-4: LLM集成与LangChain
@@ -911,9 +960,6 @@ AgentDevProject/
 
 ```txt
 # requirements.txt 新增
-# Database
-psycopg2-binary>=2.9.0          # PostgreSQL驱动
-alembic>=1.12.0                # 数据库迁移
 
 # Authentication
 python-jose[cryptography]>=3.3.0  # JWT处理
@@ -925,13 +971,13 @@ langchain>=0.1.0
 langchain-community>=0.0.10
 zhipuai>=4.0.0                 # 智谱AI SDK
 
-# Monitoring
+# Monitoring (可选)
 prometheus-client>=0.19.0       # Prometheus指标
 opentelemetry-api>=1.21.0      # OpenTelemetry
 opentelemetry-sdk>=1.21.0
 opentelemetry-exporter-jaeger>=1.21.0
 
-# Caching
+# Caching (可选)
 redis>=5.0.0
 ```
 
