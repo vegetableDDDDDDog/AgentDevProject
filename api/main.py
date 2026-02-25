@@ -29,7 +29,7 @@ import agents.simple_agents  # 注册: echo_agent, mock_chat_agent, counter_agen
 import agents.llm_agents  # 注册: llm_chat, llm_single_turn
 
 # 导入认证路由和异常处理器
-from api.routers import auth, metrics
+from api.routers import auth, metrics, tools
 
 
 # 配置日志
@@ -271,6 +271,7 @@ app.include_router(agents.router, prefix=settings.api_prefix, tags=["Agents"])
 app.include_router(sessions.router, prefix=settings.api_prefix, tags=["Sessions"])
 app.include_router(auth.router, prefix=settings.api_prefix, tags=["Auth"])
 app.include_router(metrics.router, prefix=settings.api_prefix, tags=["Metrics"])
+app.include_router(tools.router, prefix=settings.api_prefix, tags=["Tools"])
 
 
 # ============================================================================
