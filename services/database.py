@@ -246,6 +246,70 @@ class AgentLog(Base):
         return f"<AgentLog(id={self.id}, session_id={self.session_id}, tenant_id={self.tenant_id}, status={self.status})>"
 
 
+# ============================================================================
+# 工具调用模型 (阶段3)
+# ============================================================================
+
+class ToolCallLog(Base):
+    """
+    工具调用审计日志ORM模型。
+
+    记录所有工具调用的详细信息，包括输入、输出、状态和执行时间。
+    支持多租户隔离和审计追踪。
+    """
+    __tablename__ = "tool_call_logs"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    session_id = Column(String, ForeignKey("sessions.id", ondelete="CASCADE"), nullable=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    tool_name = Column(String(100), nullable=False, index=True)
+    tool_input = Column(JSON, nullable=True)
+    tool_output = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False)  # 'success', 'error'
+    error_message = Column(Text, nullable=True)
+    execution_time_ms = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+
+    # 关系
+    tenant = relationship("Tenant", backref="tool_logs")
+    session = relationship("Session", backref="tool_logs")
+    user = relationship("User", backref="tool_logs")
+
+    def __repr__(self) -> str:
+        return f"<ToolCallLog(id={self.id}, tool={self.tool_name}, status={self.status})>"
+
+
+class TenantToolQuota(Base):
+    """
+    租户工具调用配额ORM模型。
+
+    管理每个租户对每个工具的调用配额限制。
+    支持日配额和月配额两种维度。
+    """
+    __tablename__ = "tenant_tool_quotas"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    tool_name = Column(String(100), nullable=False)
+    max_calls_per_day = Column(Integer, nullable=True)
+    max_calls_per_month = Column(Integer, nullable=True)
+    current_day_calls = Column(Integer, default=0, nullable=False)
+    current_month_calls = Column(Integer, default=0, nullable=False)
+    last_reset_date = Column(Date, default=lambda: date.today(), nullable=False)
+
+    # 关系
+    tenant = relationship("Tenant", backref="tool_quotas")
+
+    # 唯一约束
+    __table_args__ = (
+        UniqueConstraint('tenant_id', 'tool_name', name='uq_tenant_tool'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<TenantToolQuota(tenant={self.tenant_id}, tool={self.tool_name})>"
+
+
 def get_db() -> Session:
     """
     FastAPI的依赖注入函数。
