@@ -1,0 +1,34 @@
+# Claude Code 规则配置
+
+# 当在项目中工作时，Claude 必须遵守以下规则
+
+## 文件读取优先级
+
+在开始任何任务前，按以下顺序读取文件：
+1. PROJECT_RULES.md（项目规则）
+2. docs/CONVENTIONS.md（完整规约）
+3. docs/progress/phase{N}-progress.md（当前进度）
+
+## 强制行为
+
+### 创建文档时
+- 必须使用 docs/templates/ 下的模板
+- 必须遵循 docs/CONVENTIONS.md 中的命名规范
+- 必须更新 docs/INDEX.md
+
+### 开发功能时
+- 必须遵循 TDD 流程（先写测试）
+- 完成后必须更新进度文件
+- 必须使用规范的 Commit Message
+
+### 提交代码时
+- 检查测试是否通过
+- 检查文档是否更新
+- 使用 Conventional Commits 格式
+
+## 自动检查
+
+在执行关键操作前，自动提醒用户：
+- 创建文件前：检查命名规范
+- 提交前：检查 Commit Message 格式
+- 完成任务：检查进度文件是否更新

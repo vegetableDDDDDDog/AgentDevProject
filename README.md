@@ -1,5 +1,7 @@
 # LangChain Agent 开发项目
 
+> **🚨 AI 助手必读**: 在开始任何任务前，请先阅读 [PROJECT_RULES.md](PROJECT_RULES.md) 和 [docs/CONVENTIONS.md](docs/CONVENTIONS.md)
+
 > 从零开始学习 LangChain Agent 开发的完整项目
 
 ---
