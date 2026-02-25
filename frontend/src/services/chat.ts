@@ -17,10 +17,7 @@ import type {
  * @param agentType - Agent 类型
  * @param message - 用户消息
  * @param sessionId - 会话 ID（可选）
- * @param onMessage - 接收消息的回调
- * @param onThought - 接收思考过程的回调
- * @param onError - 接收错误的回调
- * @param onComplete - 完成的回调
+ * @param callbacks - 回调函数
  */
 export const streamChat = async (
   agentType: string,
@@ -31,6 +28,7 @@ export const streamChat = async (
     onThought?: (thought: string) => void;
     onError?: (error: string) => void;
     onComplete?: (data: any) => void;
+    onToolEvent?: (event: any) => void;  // 新增：工具事件回调
   }
 ): Promise<void> => {
   const { fetchEventSource } = await import('@microsoft/fetch-event-source');
@@ -71,6 +69,22 @@ export const streamChat = async (
           case 'done':
             if (callbacks.onComplete) {
               callbacks.onComplete(data.data);
+            }
+            break;
+
+          // 工具事件（Phase 3）
+          case 'tool_start':
+          case 'tool_end':
+          case 'tool_error':
+            if (callbacks.onToolEvent) {
+              callbacks.onToolEvent({
+                type: data.event,
+                tool_name: data.data.tool_name,
+                input: data.data.input,
+                output: data.data.output,
+                error: data.data.error,
+                timestamp: data.data.timestamp || Date.now() / 1000,
+              });
             }
             break;
         }

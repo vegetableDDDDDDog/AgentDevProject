@@ -120,3 +120,27 @@ export interface AgentInfo {
   role: string;
   capabilities: string[];
 }
+
+// ============================================================================
+// 工具调用事件类型 (Phase 3)
+// ============================================================================
+
+export interface ToolEvent {
+  type: 'tool_start' | 'tool_end' | 'tool_error';
+  tool_name: string;
+  input?: any;
+  output?: any;
+  error?: string;
+  timestamp: number;
+}
+
+export interface SSEToolEvent {
+  event: 'tool_start' | 'tool_end' | 'tool_error';
+  data: {
+    tool_name: string;
+    input?: any;
+    output?: any;
+    error?: string;
+    timestamp: number;
+  };
+}

@@ -1,14 +1,15 @@
 /**
  * 聊天页面
  *
- * 提供对话界面，支持 SSE 流式输出。
+ * 提供对话界面，支持 SSE 流式输出和工具调用状态显示。
  */
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatBubble } from '../components/Chat/ChatBubble';
 import { ChatInput } from '../components/Chat/ChatInput';
+import { ToolEventList } from '../components/Tools/ToolEventList';
 import { streamChat } from '../services/chat';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, ToolEvent } from '../types';
 
 export const ChatPage: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -16,6 +17,7 @@ export const ChatPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [agentType, setAgentType] = useState('llm_chat');
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [toolEvents, setToolEvents] = useState<ToolEvent[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 自动滚动到底部
@@ -24,6 +26,9 @@ export const ChatPage: React.FC = () => {
   }, [messages]);
 
   const handleSend = async (message: string) => {
+    // 清空之前的工具事件
+    setToolEvents([]);
+
     // 添加用户消息
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -65,6 +70,11 @@ export const ChatPage: React.FC = () => {
           },
           onThought: (thought) => {
             console.log('思考过程:', thought);
+          },
+          onToolEvent: (event) => {
+            // 处理工具事件
+            console.log('工具事件:', event);
+            setToolEvents((prev) => [...prev, event]);
           },
           onComplete: (data) => {
             console.log('完成:', data);
@@ -130,6 +140,7 @@ export const ChatPage: React.FC = () => {
           }}
         >
           <option value="llm_chat">LLM 聊天 (真实 AI)</option>
+          <option value="tool_using">工具使用 Agent (Phase 3)</option>
           <option value="mock_chat_agent">模拟聊天 (测试)</option>
           <option value="echo_agent">回声 Agent (测试)</option>
         </select>
@@ -155,7 +166,17 @@ export const ChatPage: React.FC = () => {
             <div>开始对话吧！</div>
           </div>
         ) : (
-          messages.map((message) => <ChatBubble key={message.id} message={message} />)
+          messages.map((message) => (
+            <React.Fragment key={message.id}>
+              <ChatBubble message={message} />
+              {/* 在最后一条 AI 消息后显示工具事件 */}
+              {message.role === 'assistant' &&
+                message === messages[messages.length - 1] &&
+                toolEvents.length > 0 && (
+                  <ToolEventList events={toolEvents} />
+                )}
+            </React.Fragment>
+          ))
         )}
         {isLoading && (
           <div style={{ textAlign: 'center', color: '#999', padding: '12px' }}>
