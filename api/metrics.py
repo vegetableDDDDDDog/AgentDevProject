@@ -238,3 +238,31 @@ active_sessions = Gauge("active_sessions", "Number of active sessions")
 
 # Token 使用
 token_usage_total = Counter("token_usage_total", "Total tokens used")
+
+
+# ============================================================================
+# 工具调用指标 (Phase 3)
+# ============================================================================
+
+# 工具调用总次数
+tool_calls_total = Counter("tool_calls_total", "Total tool calls")
+
+# 工具执行时间
+tool_execution_duration = Histogram("tool_execution_duration_seconds", "Tool execution duration")
+
+# 当前活跃工具调用
+active_tool_calls = Gauge("active_tool_calls", "Number of active tool calls")
+
+
+# ============================================================================
+# 辅助函数
+# ============================================================================
+
+def get_metrics_store() -> MetricsStore:
+    """
+    获取全局指标存储实例
+
+    Returns:
+        MetricsStore: 全局指标存储
+    """
+    return metrics_store
