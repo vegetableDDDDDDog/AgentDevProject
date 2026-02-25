@@ -85,9 +85,9 @@
 - [ ] API 和前端
 - [ ] 测试和优化
 
-**当前阶段**: 基础设施开发中 🚧
-**下一阶段**: Task 2 - 创建数据库迁移脚本
-**进度**: 2/14 任务完成 (14%)
+**当前阶段**: Week 1 完成，准备进入 Week 2 🎉
+**下一阶段**: Task 6 - 配置 Tavily 搜索工具
+**进度**: 5/14 任务完成 (36%)
 
 ---
 
@@ -122,6 +122,80 @@ cat docs/plans/2026-02-25-phase3-implementation-plan.md
 ---
 
 ## 📝 变更日志
+
+### ✅ Task #3: 创建 ToolAdapter 多租户适配器 (2026-02-25)
+
+#### 完成内容
+- **新增服务**: `services/tool_adapter.py`
+  - `ToolAdapter` 类 - 为 LangChain 工具注入多租户能力
+  - 支持同步和异步工具执行
+  - 集成指标记录（成功/失败、执行时间）
+  - 集成审计日志到数据库
+  - 预留配额检查接口（待 Task 4 集成）
+
+- **扩展指标**: `api/metrics.py`
+  - 添加 `get_metrics_store()` 函数
+  - 添加工具调用指标（tool_calls_total, execution_duration, active_tool_calls）
+
+#### 技术特性
+- 多租户隔离：所有工具调用记录租户 ID
+- 可观测性：自动记录调用次数和执行时间
+- 审计追踪：完整记录输入、输出、错误信息
+- 错误处理：异常不影响主流程
+
+#### 文件清单
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| api/metrics.py | ✅ 修改 | 添加工具调用指标和辅助函数 |
+| services/tool_adapter.py | ✅ 新建 | ToolAdapter 多租户适配器 |
+| tests/test_tool_adapter.py | ✅ 新建 | 适配器测试 |
+
+---
+
+### ✅ Task #4: 创建 QuotaService 工具配额检查 (2026-02-25)
+
+#### 完成内容
+- **新增服务**: `services/quota_service.py`
+  - `QuotaService` 类
+  - `check_tool_quota()` - 检查配额限制
+  - `record_tool_usage()` - 记录工具使用
+  - `_reset_if_needed()` - 自动重置计数器
+  - `get_quota_info()` - 获取配额信息
+
+#### 技术特性
+- 配额检查：支持日配额和月配额
+- 自动重置：自动检测并重置过期计数
+- 异常处理：配额超限抛出 `QuotaExceededException`
+- 灵活配置：无配额配置时不限制
+
+#### 文件清单
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| services/quota_service.py | ✅ 新建 | 配额管理服务 |
+
+---
+
+### ✅ Task #5: 创建 ToolRegistry 工具注册表 (2026-02-25)
+
+#### 完成内容
+- **新增服务**: `services/tool_registry.py`
+  - `ToolRegistry` 类
+  - 内置标准工具注册（tavily_search, llm_math）
+  - `get_tools_for_tenant()` - 根据租户配置返回工具列表
+  - `get_tool_info()` - 获取工具信息
+  - `list_all_tools()` - 列出所有工具
+
+#### 技术特性
+- 工具注册：管理内置和自定义工具
+- 租户隔离：每个租户可配置可用工具
+- 扩展性：支持后续添加更多工具类型
+
+#### 文件清单
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| services/tool_registry.py | ✅ 新建 | 工具注册表 |
+
+---
 
 ### ✅ Task #1: 创建工具调用日志数据模型 (2026-02-25)
 
