@@ -4,13 +4,25 @@
  * 显示用户信息和登出按钮。
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUser, logout } from '../../services/auth';
+import { logout } from '../../services/auth';
+import type { User } from '../../types';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
-  const user = getUser();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // TODO: 从 localStorage 或 API 获取用户信息
+    // 这里先使用 mock 数据
+    setUser({
+      id: '1',
+      email: 'user@example.com',
+      role: 'user',
+      tenant_id: 'tenant-1'
+    });
+  }, []);
 
   const handleLogout = () => {
     logout();
