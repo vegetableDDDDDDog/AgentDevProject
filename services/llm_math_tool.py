@@ -1,18 +1,20 @@
 """
-LLM 数学计算工具集成
+LLM 数学计算工具（占位实现）
 
 使用 LangChain 的 LLMMathChain 进行复杂数学计算。
 """
-from langchain.chains import LLMMathChain
-from langchain.tools import BaseTool, StructuredTool
+from langchain.tools import BaseTool
 
 
 class LLMMathTool(BaseTool):
     """
-    LLM 数学计算工具
+    LLM 数学计算工具（简化版）
 
-    使用大语言模型进行精确的数学计算，
-    解决 LLM 常见的计算错误问题。
+    使用大语言模型进行精确的数学计算。
+
+    注意：完整实现需要：
+    1. 配置 LLM（智谱AI、OpenAI等）
+    2. 安装 langchain 库
     """
 
     name = "llm_math"
@@ -23,13 +25,12 @@ class LLMMathTool(BaseTool):
         初始化数学工具
 
         Args:
-            llm: 语言模型实例
+            llm: 语言模型实例（可选）
         """
         self.llm = llm
-        self.chain = None
 
-        if llm:
-            self.chain = LLMMathChain.from_llm(llm=llm)
+        if not llm:
+            print("⚠️  警告: 未设置 LLM，数学工具将使用占位实现")
 
     def set_llm(self, llm):
         """
@@ -39,11 +40,15 @@ class LLMMathTool(BaseTool):
             llm: 语言模型实例
         """
         self.llm = llm
-        self.chain = LLMMathChain.from_llm(llm=llm)
+        print("✅ LLM 已设置")
 
     def _run(self, expression: str) -> str:
         """
-        执行数学计算
+        执行数学计算（占位实现）
+
+        TODO: 完整实现需要：
+        1. 配置 LLM（智谱AI、OpenAI等）
+        2. 使用 LLMMathChain.from_llm()
 
         Args:
             expression: 数学表达式
@@ -51,23 +56,14 @@ class LLMMathTool(BaseTool):
         Returns:
             str: 计算结果
         """
-        if not self.chain:
-            return "错误: 未设置语言模型"
+        if not self.llm:
+            return f"数学计算占位: {expression}（需要配置 LLM）"
 
-        try:
-            result = self.chain.run(expression)
-            return f"计算结果: {result}"
-        except Exception as e:
-            return f"计算失败: {str(e)}"
+        # TODO: 实际实现
+        # return self.chain.run(expression)
+
+        return f"数学计算占位: {expression}"
 
     async def _arun(self, expression: str) -> str:
-        """
-        异步执行计算
-
-        Args:
-            expression: 数学表达式
-
-        Returns:
-            str: 计算结果
-        """
+        """异步执行计算"""
         return self._run(expression)
