@@ -2,6 +2,26 @@
 
 > 本项目采用分阶段文档结构，按阶段组织设计文档和进度跟踪。
 
+> **⚠️ 重要**: 开发前请先阅读 [开发规约](CONVENTIONS.md)
+
+## 📚 开发规约
+
+**新开发者必读**：
+- [开发规约](CONVENTIONS.md) - 所有开发规范的权威文档
+  - 文档结构规范
+  - 进度记录规范
+  - 代码提交规范
+  - 分支管理规范
+  - Worktree 使用规范
+  - 测试规范
+  - 开发流程规范
+
+**模板文件**（快速上手）：
+- [进度文件模板](templates/progress-file-template.md)
+- [设计文档模板](templates/design-doc-template.md)
+
+---
+
 ## 📚 文档结构
 
 ```
@@ -32,6 +52,11 @@ docs/
 ```
 
 ## 🔗 快速导航
+
+### 📖 规约与模板
+- [开发规约](CONVENTIONS.md) - **必读！**
+- [进度文件模板](templates/progress-file-template.md)
+- [设计文档模板](templates/design-doc-template.md)
 
 ### 设计文档
 - [Phase 1 设计](plans/phase1-design.md) - Agent PaaS 平台基础架构
