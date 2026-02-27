@@ -33,10 +33,14 @@ export const streamChat = async (
 ): Promise<void> => {
   const { fetchEventSource } = await import('@microsoft/fetch-event-source');
 
-  await fetchEventSource('/chat/completions', {
+  // 获取 token
+  const token = localStorage.getItem('token');
+
+  await fetchEventSource('http://localhost:8000/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '',
     },
     body: JSON.stringify({
       agent_type: agentType,
@@ -93,9 +97,19 @@ export const streamChat = async (
       }
     },
     onerror(err: Error) {
+      console.error('SSE 连接错误:', err);
       if (callbacks.onError) {
-        callbacks.onError(err.message);
+        callbacks.onError(`网络错误: ${err.message}`);
       }
+    },
+    onopen(response) {
+      console.log('SSE 连接已建立', response.status);
+      if (response.ok) {
+        console.log('Content-Type:', response.headers.get('Content-Type'));
+        return;
+      }
+      console.error('SSE 响应错误:', response.status, response.statusText);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     },
   });
 };

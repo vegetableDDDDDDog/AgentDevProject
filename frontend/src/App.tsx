@@ -26,15 +26,15 @@ export const App: React.FC = () => {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
-          path="/*"
+          path="/"
           element={
             <ProtectedRoute>
               <MainLayout />
             </ProtectedRoute>
           }
         >
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/" element={<Navigate to="/chat" replace />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route index element={<Navigate to="/chat" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>
