@@ -6,7 +6,7 @@
 
 from typing import Callable
 from fastapi import Request, Response
-from time import time
+import time
 
 from api.metrics import (
     requests_total,

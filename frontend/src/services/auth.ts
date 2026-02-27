@@ -22,20 +22,14 @@ import {
  * 用户登录
  */
 export const login = async (
-  username: string,
+  email: string,
   password: string
 ): Promise<AuthResponse> => {
-  const formData = new FormData();
-  formData.append('username', username);
-  formData.append('password', password);
-
   const response = await apiClient.post<AuthResponse>(
     '/auth/login',
-    formData,
     {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      email,
+      password
     }
   );
 

@@ -1,29 +1,27 @@
 /**
- * Token 存储工具
- *
- * 提供 JWT Token 的本地存储和管理功能。
+ * Token 管理
  */
 
-const TOKEN_KEY = 'access_token';
+const TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 const USER_KEY = 'user';
 
 /**
- * 存储 Token 到 localStorage
- */
-export const setToken = (token: string): void => {
-  localStorage.setItem(TOKEN_KEY, token);
-};
-
-/**
- * 获取 Token
+ * 获取访问 token
  */
 export const getToken = (): string | null => {
   return localStorage.getItem(TOKEN_KEY);
 };
 
 /**
- * 删除 Token
+ * 保存访问 token
+ */
+export const setToken = (token: string): void => {
+  localStorage.setItem(TOKEN_KEY, token);
+};
+
+/**
+ * 移除 token
  */
 export const removeToken = (): void => {
   localStorage.removeItem(TOKEN_KEY);
@@ -32,21 +30,21 @@ export const removeToken = (): void => {
 };
 
 /**
- * 存储 Refresh Token
- */
-export const setRefreshToken = (token: string): void => {
-  localStorage.setItem(REFRESH_TOKEN_KEY, token);
-};
-
-/**
- * 获取 Refresh Token
+ * 获取刷新 token
  */
 export const getRefreshToken = (): string | null => {
   return localStorage.getItem(REFRESH_TOKEN_KEY);
 };
 
 /**
- * 存储用户信息
+ * 保存刷新 token
+ */
+export const setRefreshToken = (token: string): void => {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+};
+
+/**
+ * 保存用户信息
  */
 export const setUser = (user: any): void => {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -57,11 +55,18 @@ export const setUser = (user: any): void => {
  */
 export const getUser = (): any | null => {
   const userStr = localStorage.getItem(USER_KEY);
-  return userStr ? JSON.parse(userStr) : null;
+  if (userStr) {
+    try {
+      return JSON.parse(userStr);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 };
 
 /**
- * 检查是否已登录
+ * 检查是否已认证
  */
 export const isAuthenticated = (): boolean => {
   return !!getToken();

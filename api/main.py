@@ -151,13 +151,20 @@ async def log_requests(request: Request, call_next: Callable) -> JSONResponse:
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """处理 HTTP 异常。"""
+    # 如果 detail 已经是字典（ErrorResponse.model_dump() 的结果），直接使用
+    if isinstance(exc.detail, dict):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=exc.detail
+        )
+    # 如果 detail 是其他类型，转换成字符串
     return JSONResponse(
         status_code=exc.status_code,
-        content=ErrorResponse(
-            error="HTTP_ERROR",
-            message=exc.detail,
-            path=request.url.path
-        ).model_dump()
+        content={
+            "error": "HTTP_ERROR",
+            "message": str(exc.detail),
+            "path": request.url.path
+        }
     )
 
 

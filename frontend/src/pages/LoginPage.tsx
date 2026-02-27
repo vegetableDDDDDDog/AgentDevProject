@@ -6,8 +6,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../../services/auth';
-import { getUser } from '../../utils/token';
+import { login } from '../services/auth';
+import { getUser } from '../utils/token';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
