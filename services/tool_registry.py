@@ -5,6 +5,8 @@ import os
 from typing import List
 from services.tool_adapter import ToolAdapter
 from services.database import Session
+from services.duckduckgo_tool import DuckDuckGoSearchTool
+from services.llm_math_tool import LLMMathTool
 
 
 class ToolRegistry:
@@ -25,8 +27,8 @@ class ToolRegistry:
     def _register_builtin_tools(self):
         """注册内置标准工具（工具类，占位符）"""
         self._builtin_tools = {
-            'tavily_search': 'TavilySearchResults',
-            'llm_math': 'LLMMathChain',
+            'duckduckgo_search': 'DuckDuckGoSearchTool',
+            'llm_math': 'LLMMathTool',
         }
 
     def get_tools_for_tenant(
@@ -50,14 +52,17 @@ class ToolRegistry:
 
         # 网络搜索（默认开启）
         if tenant_settings.get('enable_search', True):
-            # TODO: 实际创建工具实例（Task 6）
-            # 目前只返回占位符
-            pass
+            search_tool = DuckDuckGoSearchTool(
+                max_results=tenant_settings.get('search_max_results', 5),
+                time_range=tenant_settings.get('search_time_range', 'w'),
+                backend='news'
+            )
+            tools.append(ToolAdapter(search_tool, tenant_id, db))
 
         # 数学计算（默认开启）
         if tenant_settings.get('enable_math', True):
-            # TODO: 实际创建工具实例（Task 6）
-            pass
+            math_tool = LLMMathTool()  # 不需要 LLMService，使用安全 eval
+            tools.append(ToolAdapter(math_tool, tenant_id, db))
 
         return tools
 
