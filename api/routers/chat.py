@@ -75,8 +75,12 @@ async def stream_agent_response(
             available = ", ".join(list_registered_agents())
             raise ValueError(f"未知的 Agent 类型: {agent_type}，可用: {available}")
 
-        # 3. 获取 Agent 实例
-        agent = get_agent(agent_type)
+        # 3. 获取 Agent 实例（为 LLM Agent 传递租户上下文）
+        agent_config = {}
+        if agent_type in ["llm_chat", "llm_single_turn"]:
+            agent_config["tenant_context"] = tenant_context
+
+        agent = get_agent(agent_type, config=agent_config)
 
         # 4. 添加用户消息到会话
         service.add_message(

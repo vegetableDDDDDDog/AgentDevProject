@@ -14,10 +14,7 @@ from api.schemas.tool import (
     ToolConfigRequest,
     ToolConfigResponse
 )
-from api.middleware.auth_middleware import (
-    get_current_auth_user,
-    get_current_tenant_id
-)
+from api.middleware.auth_middleware import get_current_tenant_id
 from api.middleware.tenant_middleware import get_tenant_context
 from services.database import get_db, SessionLocal, ToolCallLog
 from services.tool_registry import ToolRegistry
@@ -37,7 +34,6 @@ router = APIRouter(prefix="/tools", tags=["Tools"])
     description="返回当前租户可用的工具列表，包含配额信息"
 )
 async def list_tools(
-    auth_user: dict = Depends(get_current_auth_user),
     tenant_id: str = Depends(get_current_tenant_id),
     context: Any = Depends(get_tenant_context)
 ) -> List[ToolResponse]:
@@ -107,7 +103,6 @@ async def list_tools(
     description="返回工具调用的统计数据，包括总次数、按工具分组、成功率"
 )
 async def get_tool_usage(
-    auth_user: dict = Depends(get_current_auth_user),
     tenant_id: str = Depends(get_current_tenant_id),
     db: SessionLocal = Depends(get_db)
 ) -> ToolUsageResponse:
@@ -164,7 +159,7 @@ async def get_tool_usage(
     description="返回当前租户的工具配置（API Key 会脱敏）"
 )
 async def get_tool_config(
-    auth_user: dict = Depends(get_current_auth_user),
+    tenant_id: str = Depends(get_current_tenant_id),
     context: Any = Depends(get_tenant_context)
 ) -> ToolConfigResponse:
     """
@@ -205,7 +200,6 @@ async def get_tool_config(
 )
 async def update_tool_config(
     request: ToolConfigRequest,
-    auth_user: dict = Depends(get_current_auth_user),
     tenant_id: str = Depends(get_current_tenant_id),
     context: Any = Depends(get_tenant_context),
     db: SessionLocal = Depends(get_db)

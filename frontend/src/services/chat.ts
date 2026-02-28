@@ -49,30 +49,34 @@ export const streamChat = async (
     }),
     onmessage(msg: MessageEvent) {
       try {
+        // SSE 格式: msg.event = 事件类型, msg.data = JSON 数据
+        const eventType = msg.event;
         const data = JSON.parse(msg.data);
 
-        switch (data.event) {
+        console.log('SSE 事件:', eventType, data);
+
+        switch (eventType) {
           case 'thought':
             if (callbacks.onThought) {
-              callbacks.onThought(data.data.content);
+              callbacks.onThought(data.content);
             }
             break;
 
           case 'message':
-            if (data.data.type === 'text') {
-              callbacks.onMessage(data.data.content);
+            if (data.type === 'text') {
+              callbacks.onMessage(data.content);
             }
             break;
 
           case 'error':
             if (callbacks.onError) {
-              callbacks.onError(data.data.message);
+              callbacks.onError(data.message);
             }
             break;
 
           case 'done':
             if (callbacks.onComplete) {
-              callbacks.onComplete(data.data);
+              callbacks.onComplete(data);
             }
             break;
 
@@ -82,18 +86,18 @@ export const streamChat = async (
           case 'tool_error':
             if (callbacks.onToolEvent) {
               callbacks.onToolEvent({
-                type: data.event,
-                tool_name: data.data.tool_name,
-                input: data.data.input,
-                output: data.data.output,
-                error: data.data.error,
-                timestamp: data.data.timestamp || Date.now() / 1000,
+                type: eventType,
+                tool_name: data.tool_name,
+                input: data.input,
+                output: data.output,
+                error: data.error,
+                timestamp: data.timestamp || Date.now() / 1000,
               });
             }
             break;
         }
       } catch (e) {
-        console.error('解析 SSE 消息失败:', e);
+        console.error('解析 SSE 消息失败:', e, '原始消息:', msg);
       }
     },
     onerror(err: Error) {

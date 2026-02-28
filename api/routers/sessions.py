@@ -17,7 +17,7 @@ from api.schemas import (
 from services.session_service import SessionService
 from services.tenant_query import TenantQuery
 from api.middleware.db_middleware import get_db
-from api.middleware.auth_middleware import get_current_auth_user, get_current_tenant_id
+from api.middleware.auth_middleware import get_current_tenant_id
 from api.middleware.tenant_middleware import get_tenant_context, require_active_tenant
 
 
@@ -37,7 +37,6 @@ router = APIRouter(prefix="/sessions", tags=["Sessions"])
 async def create_session(
     request: SessionCreateRequest,
     db: SQLSession = Depends(get_db),
-    auth_user: dict = Depends(get_current_auth_user),
     tenant_id: str = Depends(get_current_tenant_id),
     is_active: bool = Depends(require_active_tenant)
 ) -> SessionResponse:

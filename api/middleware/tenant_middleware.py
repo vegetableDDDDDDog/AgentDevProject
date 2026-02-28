@@ -6,10 +6,12 @@
 """
 
 from typing import Callable
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, status, Depends
+from sqlalchemy.orm import Session as SQLSession
 
 from services.tenant_service import TenantService
 from services.exceptions import TenantNotFoundException, TenantSuspendedException
+from api.middleware.db_middleware import get_db
 
 
 async def tenant_middleware(
@@ -103,7 +105,10 @@ async def tenant_middleware(
 # 依赖注入函数（供路由使用）
 # ============================================================================
 
-async def get_tenant_context(request: Request):
+async def get_tenant_context(
+    request: Request,
+    db: SQLSession = Depends(get_db)
+):
     """
     获取租户上下文（依赖注入）
 
@@ -112,12 +117,15 @@ async def get_tenant_context(request: Request):
 
     Args:
         request: FastAPI 请求对象
+        db: 数据库会话
 
     Returns:
         TenantContext 对象
 
     Raises:
-        HTTPException 500: 租户上下文未注入（中间件未执行）
+        HTTPException 401: 未认证
+        HTTPException 404: 租户不存在
+        HTTPException 403: 租户被暂停
 
     示例:
         @router.get("/api/me")
@@ -133,23 +141,72 @@ async def get_tenant_context(request: Request):
                 }
             }
     """
+    # 先检查是否已被中间件设置
     context = getattr(request.state, 'tenant_context', None)
 
-    if not context:
+    if context:
+        return context
+
+    # 如果中间件没有设置，手动获取
+    # 获取认证用户
+    auth_user = getattr(request.state, 'auth_user', None)
+
+    if not auth_user:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
-                "error": "TENANT_CONTEXT_NOT_FOUND",
-                "message": "租户上下文未初始化",
-                "code": "tenant_004"
+                "error": "UNAUTHORIZED",
+                "message": "需要认证",
+                "code": "auth_001"
             }
         )
 
-    return context
+    tenant_id = auth_user.get('tenant_id')
+
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "TENANT_ID_MISSING",
+                "message": "Token 中缺少租户 ID",
+                "code": "auth_009"
+            }
+        )
+
+    try:
+        # 手动获取租户上下文
+        tenant_service = TenantService()
+        tenant_context = tenant_service.get_tenant_context(db, tenant_id)
+
+        # 缓存到 request.state
+        request.state.tenant_context = tenant_context
+
+        return tenant_context
+
+    except TenantNotFoundException:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "TENANT_NOT_FOUND",
+                "message": "租户不存在",
+                "code": "tenant_001"
+            }
+        )
+
+    except TenantSuspendedException:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "TENANT_SUSPENDED",
+                "message": "租户已被暂停",
+                "code": "tenant_002"
+            }
+        )
 
 
 async def require_active_tenant(
-    request: Request
+    request: Request,
+    db: SQLSession = Depends(get_db)
 ) -> bool:
     """
     要求租户处于激活状态（依赖注入）
@@ -158,6 +215,7 @@ async def require_active_tenant(
 
     Args:
         request: FastAPI 请求对象
+        db: 数据库会话
 
     Returns:
         True （租户激活）
@@ -173,19 +231,67 @@ async def require_active_tenant(
             # 只有激活租户才能创建会话
             pass
     """
-    context = await get_tenant_context(request)
+    # 获取认证用户
+    auth_user = getattr(request.state, 'auth_user', None)
 
-    if not context.is_active():
+    if not auth_user:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
-                "error": "TENANT_NOT_ACTIVE",
-                "message": "租户未激活",
-                "code": "tenant_005"
+                "error": "UNAUTHORIZED",
+                "message": "需要认证",
+                "code": "auth_001"
             }
         )
 
-    return True
+    tenant_id = auth_user.get('tenant_id')
+
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "TENANT_ID_MISSING",
+                "message": "Token 中缺少租户 ID",
+                "code": "auth_009"
+            }
+        )
+
+    # 直接使用 TenantService 检查租户状态
+    try:
+        tenant_service = TenantService()
+        tenant_context = tenant_service.get_tenant_context(db, tenant_id)
+
+        if not tenant_context.is_active():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "TENANT_NOT_ACTIVE",
+                    "message": "租户未激活",
+                    "code": "tenant_005"
+                }
+            )
+
+        return True
+
+    except TenantNotFoundException:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "TENANT_NOT_FOUND",
+                "message": "租户不存在",
+                "code": "tenant_001"
+            }
+        )
+
+    except TenantSuspendedException:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "TENANT_SUSPENDED",
+                "message": "租户已被暂停",
+                "code": "tenant_002"
+            }
+        )
 
 
 # ============================================================================

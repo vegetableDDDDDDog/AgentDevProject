@@ -53,10 +53,11 @@ class LLMChatAgent(BaseAgent):
         if not self.tenant_context:
             raise ValueError("LLMChatAgent 需要租户上下文 (tenant_context)")
 
-        # 创建 LLM 服务
+        # 创建 LLM 服务（从 config 中移除 tenant_context 避免重复传递）
+        llm_config = {k: v for k, v in self.config.items() if k != "tenant_context"}
         self.llm_service = LLMService.from_tenant_context(
             self.tenant_context,
-            **self.config
+            **llm_config
         )
 
         # 获取配置
@@ -232,10 +233,11 @@ class LLMSingleTurnAgent(BaseAgent):
         if not self.tenant_context:
             raise ValueError("LLMSingleTurnAgent 需要租户上下文 (tenant_context)")
 
-        # 创建 LLM 服务
+        # 创建 LLM 服务（从 config 中移除 tenant_context 避免重复传递）
+        llm_config = {k: v for k, v in self.config.items() if k != "tenant_context"}
         self.llm_service = LLMService.from_tenant_context(
             self.tenant_context,
-            **self.config
+            **llm_config
         )
 
         # 获取配置
