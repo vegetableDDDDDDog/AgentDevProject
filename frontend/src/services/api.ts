@@ -3,7 +3,7 @@
  */
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { getToken, removeToken, isTokenExpiring } from '../utils/token';
+import { getToken, isTokenExpiring } from '../utils/token';
 import { refreshAccessToken, forceLogout } from './auth';
 import type { APIError } from '../types';
 
@@ -87,17 +87,57 @@ apiClient.interceptors.request.use(
   }
 );
 
-// 响应拦截器 - 处理错误
+// 响应拦截器 - 被动刷新（401 错误处理）
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<APIError>) => {
-    // Token 过期，自动登出
-    if (error.response?.status === 401) {
-      removeToken();
-      window.location.href = '/login';
+  async (error: AxiosError<APIError>) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // 401 错误处理
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      // 如果正在刷新，将请求加入队列
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(() => {
+            originalRequest.headers.Authorization = `Bearer ${getToken()}`;
+            return apiClient(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
+      // 标记为重试，避免无限循环
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // 刷新 Token
+        await refreshAccessToken();
+        isRefreshing = false;
+        processQueue(null, getToken());
+
+        // 重试原请求
+        originalRequest.headers.Authorization = `Bearer ${getToken()}`;
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        // 刷新失败，强制登出
+        isRefreshing = false;
+        processQueue(refreshError, null);
+        forceLogout();
+        return Promise.reject(refreshError);
+      }
     }
 
-    // 返回统一错误格式
+    // 区分 401 登出错误和其他错误
+    if (error.response?.status === 401) {
+      // 非 Token 过期的 401 错误（如无效凭证），直接登出
+      forceLogout();
+    }
+
+    // 网络/5xx 错误：保留错误信息，不登出
     const apiError: APIError = error.response?.data || {
       error: 'UNKNOWN_ERROR',
       message: '未知错误',
