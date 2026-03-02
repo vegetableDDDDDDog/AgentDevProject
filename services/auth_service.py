@@ -241,6 +241,8 @@ class AuthService:
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # 转换为秒
             "user": {
                 "id": user.id,
                 "email": user.email,
@@ -297,6 +299,8 @@ class AuthService:
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # 转换为秒
             "user": {
                 "id": user.id,
                 "email": user.email,
@@ -525,6 +529,10 @@ class AuthService:
             raise UserSuspendedException()
 
         # 生成新的 access token
-        new_token = self.create_access_token(user)
+        new_access_token = self.create_access_token(user)
 
-        return new_token
+        return {
+            "access_token": new_access_token,
+            "token_type": "bearer",
+            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60  # 转换为秒
+        }
