@@ -5,7 +5,6 @@
 const TOKEN_KEY = 'token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 const USER_KEY = 'user';
-const EXPIRES_AT_KEY = 'expires_at';
 
 /**
  * 获取访问 token
@@ -28,7 +27,6 @@ export const removeToken = (): void => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
-  localStorage.removeItem(EXPIRES_AT_KEY);
 };
 
 /**
@@ -72,40 +70,4 @@ export const getUser = (): any | null => {
  */
 export const isAuthenticated = (): boolean => {
   return !!getToken();
-};
-
-/**
- * 保存 Token 过期时间戳
- */
-export const setExpiresAt = (expiresIn: number): void => {
-  const expiresAt = Date.now() + expiresIn * 1000;
-  localStorage.setItem(EXPIRES_AT_KEY, expiresAt.toString());
-};
-
-/**
- * 获取 Token 过期时间戳
- */
-export const getExpiresAt = (): number | null => {
-  const expiresAtStr = localStorage.getItem(EXPIRES_AT_KEY);
-  if (expiresAtStr) {
-    try {
-      return parseInt(expiresAtStr, 10);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-};
-
-/**
- * 判断 Token 是否即将过期（剩余时间 ≤ 2 分钟）
- */
-export const isTokenExpiring = (): boolean => {
-  const expiresAt = getExpiresAt();
-  if (!expiresAt) {
-    return false;
-  }
-  const now = Date.now();
-  const timeRemaining = expiresAt - now;
-  return timeRemaining <= 2 * 60 * 1000; // 2 分钟
 };
