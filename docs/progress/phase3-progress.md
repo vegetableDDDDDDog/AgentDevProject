@@ -516,3 +516,59 @@ cat docs/plans/2026-02-25-phase3-implementation-plan.md
 - ✅ 修复 Pydantic v2 类型注解问题
 - ✅ 安装依赖：duckduckgo-search, ddgs
 - ✅ 创建工具功能测试脚本
+
+---
+
+### 2026-03-02
+- ✅ 实现 Token 自动刷新功能（Task 1-6）
+  - **后端修改**:
+    - 更新 Auth Schema，添加 `expires_in` 字段
+    - 更新 AuthService，在 Token 中包含过期时间
+  - **前端修改**:
+    - 扩展 Token 工具函数（token.ts）
+    - 更新 Auth 服务（auth.ts）
+    - 实现 Axios 请求拦截器（主动刷新）
+    - 实现 Axios 响应拦截器（被动刷新）
+- ✅ Task 7: 登录页提示增强
+  - 添加 URL 参数检查（reason=session_expired/token_invalid/logout）
+  - 显示友好的会话过期提示
+  - 更新 forceLogout() 支持参数化登出原因
+- ✅ Task 8-9: 集成测试和错误场景测试
+  - 创建详细的测试指南文档
+  - 定义 8 个测试场景和预期结果
+  - 提供验证命令和检查点
+- ✅ Task 10: 文档更新
+  - 创建测试报告：`docs/DEVELOPER_LOGS/2026/2026-03-02-token-refresh-testing.md`
+  - 创建开发者日志：`docs/DEVELOPER_LOGS/2026/2026-03-02.md`
+- ⚠️ Task 11: 最终验证和清理（进行中）
+  - 待清理 `.backup` 文件
+  - 待创建最终提交
+
+#### Token 自动刷新技术特性
+- **主动刷新**: 在请求前检查 Token 是否即将过期（< 5分钟）
+- **被动刷新**: 收到 401 错误时自动刷新 Token
+- **并发控制**: 使用刷新锁防止并发刷新
+- **请求队列**: 刷新期间的请求加入队列，刷新后自动重试
+- **错误处理**: 刷新失败自动登出，网络错误保留状态
+- **用户体验**: 会话过期后显示友好提示
+
+#### 代码提交
+- `feat(phase3): add expires_in field to token response` (后端 Schema)
+- `feat(phase3): implement token expiration in auth service` (后端服务)
+- `feat(phase3): extend token utilities with expiration support` (前端工具)
+- `feat(phase3): update auth service with token refresh` (前端服务)
+- `feat(phase3): implement axios request interceptor for proactive refresh` (请求拦截器)
+- `feat(phase3): implement axios response interceptor for passive refresh` (响应拦截器)
+- `feat(phase3): add session expired prompt on login page` (登录页提示)
+
+#### 文件清单
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| api/schemas/auth.py | ✅ 修改 | 添加 expires_in 字段 |
+| services/auth_service.py | ✅ 修改 | Token 包含过期时间 |
+| frontend/src/utils/token.ts | ✅ 修改 | 扩展 Token 工具函数 |
+| frontend/src/services/auth.ts | ✅ 修改 | 添加刷新和登出函数 |
+| frontend/src/services/api.ts | ✅ 修改 | 实现请求/响应拦截器 |
+| frontend/src/pages/LoginPage.tsx | ✅ 修改 | 添加会话过期提示 |
+| docs/DEVELOPER_LOGS/2026/2026-03-02.md | ✅ 新建 | 开发者日志 |
+| docs/DEVELOPER_LOGS/2026/2026-03-02-token-refresh-testing.md | ✅ 新建 | 测试报告 |
