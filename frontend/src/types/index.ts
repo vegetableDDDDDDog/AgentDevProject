@@ -18,6 +18,7 @@ export interface AuthResponse {
   refresh_token: string;
   user: User;
   token_type: string;
+  expires_in: number;
 }
 
 export interface LoginRequest {

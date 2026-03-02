@@ -15,8 +15,7 @@ import {
   setToken,
   setRefreshToken,
   setUser,
-  removeToken,
-  setExpiresAt
+  removeToken
 } from '../utils/token';
 
 /**
@@ -38,7 +37,6 @@ export const login = async (
   setToken(response.data.access_token);
   setRefreshToken(response.data.refresh_token);
   setUser(response.data.user);
-  setExpiresAt(response.data.expires_in);
 
   return response.data;
 };
@@ -91,31 +89,4 @@ export const refreshToken = async (
   setToken(response.data.access_token);
 
   return response.data;
-};
-
-/**
- * 刷新访问 Token（用于拦截器）
- */
-export const refreshAccessToken = async (): Promise<void> => {
-  const refreshTokenValue = localStorage.getItem('refresh_token');
-  if (!refreshTokenValue) {
-    throw new Error('No refresh token available');
-  }
-
-  const response = await apiClient.post<{ access_token: string; expires_in: number }>(
-    '/auth/refresh',
-    { refresh_token: refreshTokenValue }
-  );
-
-  // 更新 Token 和过期时间
-  setToken(response.data.access_token);
-  setExpiresAt(response.data.expires_in);
-};
-
-/**
- * 强制登出（清除所有认证信息）
- */
-export const forceLogout = (): void => {
-  removeToken();
-  window.location.href = '/login';
 };
