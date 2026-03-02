@@ -56,6 +56,7 @@ class LoginResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    expires_in: int = Field(..., description="Access token过期秒数")
     user: UserInfo
 
 
@@ -70,6 +71,7 @@ class RefreshResponse(BaseModel):
     """刷新 token 成功响应"""
     access_token: str
     token_type: str = "bearer"
+    expires_in: int = Field(..., description="新Access token过期秒数")
 
 
 # ============================================================================
