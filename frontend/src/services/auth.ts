@@ -114,8 +114,10 @@ export const refreshAccessToken = async (): Promise<void> => {
 
 /**
  * 强制登出（清除所有认证信息）
+ *
+ * @param reason - 登出原因，用于在登录页显示提示
  */
-export const forceLogout = (): void => {
+export const forceLogout = (reason: 'session_expired' | 'token_invalid' = 'session_expired'): void => {
   removeToken();
-  window.location.href = '/login';
+  window.location.href = `/login?reason=${reason}`;
 };

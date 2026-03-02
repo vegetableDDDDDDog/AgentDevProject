@@ -4,17 +4,31 @@
  * 提供用户登录功能。
  */
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { login } from '../services/auth';
 import { getUser } from '../utils/token';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
+
+  // 检查 URL 参数中的提示信息
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'session_expired') {
+      setInfoMessage('您的会话已过期，请重新登录');
+    } else if (reason === 'token_invalid') {
+      setInfoMessage('登录状态无效，请重新登录');
+    } else if (reason === 'logout') {
+      setInfoMessage('您已成功退出登录');
+    }
+  }, [searchParams]);
 
   // 如果已登录，跳转到首页
   if (getUser()) {
@@ -127,6 +141,21 @@ export const LoginPage: React.FC = () => {
               }}
             />
           </div>
+
+          {infoMessage && (
+            <div
+              style={{
+                marginBottom: '16px',
+                padding: '12px',
+                backgroundColor: '#e3f2fd',
+                color: '#1976d2',
+                borderRadius: '4px',
+                fontSize: '14px',
+              }}
+            >
+              {infoMessage}
+            </div>
+          )}
 
           {error && (
             <div
