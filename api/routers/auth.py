@@ -225,15 +225,12 @@ async def refresh_token(
 
     try:
         # 刷新 token
-        new_access_token = auth_service.refresh_access_token(
+        token_data = auth_service.refresh_access_token(
             db,
             request.refresh_token
         )
 
-        return RefreshResponse(
-            access_token=new_access_token,
-            token_type="bearer"
-        )
+        return RefreshResponse(**token_data)
 
     except TokenExpiredException:
         raise HTTPException(
