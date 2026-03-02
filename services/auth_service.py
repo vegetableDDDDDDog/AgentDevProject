@@ -492,7 +492,7 @@ class AuthService:
         self,
         db: SQLSession,
         refresh_token: str
-    ) -> str:
+    ) -> Dict[str, Any]:
         """
         使用 Refresh token 刷新 Access token
 
