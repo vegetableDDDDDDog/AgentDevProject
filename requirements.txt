@@ -272,3 +272,8 @@ zipp==3.23.0
 zstandard==0.25.0
 duckduckgo-search>=8.1.1
 ddgs>=9.10.0
+
+# OCR dependencies (optional, for production)
+pytesseract>=0.3.10
+pdf2image>=1.16.0
+Pillow>=10.0.0
