@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timezone, date
 from typing import Optional, List
 
-from sqlalchemy import create_engine, Column, String, Text, Integer, DateTime, ForeignKey, JSON, event, Date, UniqueConstraint
+from sqlalchemy import create_engine, Column, String, Text, Integer, DateTime, ForeignKey, JSON, event, Date, UniqueConstraint, Boolean, Index
 from sqlalchemy.orm import declarative_base, Session, sessionmaker, relationship
 from sqlalchemy.engine import Engine
 
@@ -68,6 +68,137 @@ class Tenant(Base):
 
     def __repr__(self) -> str:
         return f"<Tenant(id={self.id}, name={self.name}, plan={self.plan})>"
+
+
+class KnowledgeBase(Base):
+    """
+    知识库ORM模型。
+
+    表示租户的知识库，存储文档和检索配置。
+    支持混合搜索（语义+关键词）和OCR处理。
+    """
+    __tablename__ = "knowledge_bases"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    collection_name = Column(String(200), nullable=False, unique=True)  # Chroma collection name
+
+    # 分块配置
+    chunk_size = Column(Integer, nullable=False, default=500)
+    chunk_overlap = Column(Integer, nullable=False, default=50)
+
+    # 检索配置
+    hybrid_search_weights = Column(JSON, nullable=True)  # {"semantic": 0.7, "keyword": 0.3}
+    top_k = Column(Integer, nullable=False, default=3)
+
+    # OCR配置
+    ocr_enabled = Column(Boolean, nullable=False, default=True)
+    ocr_threshold = Column(Integer, nullable=False, default=10)  # 最小页面数触发OCR
+
+    # 状态信息
+    status = Column(String(20), nullable=False, default='active')  # 'active', 'disabled'
+    document_count = Column(Integer, nullable=False, default=0)
+    total_chunks = Column(Integer, nullable=False, default=0)
+
+    # 时间戳
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # 关系
+    tenant = relationship("Tenant", backref="knowledge_bases")
+    documents = relationship("Document", back_populates="knowledge_base", cascade="all, delete-orphan")
+
+    # 索引
+    __table_args__ = (
+        Index('idx_kb_tenant', 'tenant_id'),
+        Index('idx_kb_collection', 'collection_name'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<KnowledgeBase(id={self.id}, name={self.name}, tenant_id={self.tenant_id})>"
+
+
+class Document(Base):
+    """
+    文档ORM模型。
+
+    表示知识库中的文档，记录文件信息和处理状态。
+    支持多种文件类型和异步处理。
+    """
+    __tablename__ = "documents"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    knowledge_base_id = Column(String, ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(String, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+
+    # 文件信息
+    filename = Column(String(255), nullable=False)
+    file_type = Column(String(100), nullable=False)  # MIME type
+    file_size = Column(Integer, nullable=False)  # bytes
+    file_path = Column(String(500), nullable=False)
+
+    # 处理信息
+    chunk_count = Column(Integer, nullable=False, default=0)
+    upload_status = Column(String(20), nullable=False, default='pending')  # 'pending', 'processing', 'completed', 'failed'
+    ocr_used = Column(Boolean, nullable=True)
+
+    # 时间戳
+    uploaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    processed_at = Column(DateTime, nullable=True)
+
+    # 关系
+    knowledge_base = relationship("KnowledgeBase", back_populates="documents")
+    tenant = relationship("Tenant", backref="documents")
+
+    # 索引
+    __table_args__ = (
+        Index('idx_doc_kb', 'knowledge_base_id'),
+        Index('idx_doc_tenant', 'tenant_id'),
+        Index('idx_doc_status', 'upload_status'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Document(id={self.id}, filename={self.filename}, status={self.upload_status})>"
+
+
+class DocumentProcessingTask(Base):
+    """
+    文档处理任务ORM模型。
+
+    跟踪文档的异步处理进度，包括上传、OCR、分块、向量化等步骤。
+    支持错误处理和重试机制。
+    """
+    __tablename__ = "document_processing_tasks"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    document_id = Column(String, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+
+    # 状态信息
+    status = Column(String(20), nullable=False, default='pending')  # 'pending', 'processing', 'completed', 'failed'
+    progress = Column(Integer, nullable=False, default=0)  # 0-100
+    current_step = Column(String(50), nullable=True)  # 'uploading', 'ocr', 'chunking', 'embedding', 'indexing'
+    error_message = Column(Text, nullable=True)
+
+    # 时间戳
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # 关系
+    tenant = relationship("Tenant", backref="processing_tasks")
+    document = relationship("Document", backref="processing_tasks")
+
+    # 索引
+    __table_args__ = (
+        Index('idx_task_doc', 'document_id'),
+        Index('idx_task_status', 'status'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DocumentProcessingTask(id={self.id}, status={self.status}, progress={self.progress})>"
 
 
 class User(Base):
