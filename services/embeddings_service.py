@@ -24,16 +24,16 @@ class EmbeddingsService:
         if not settings.openai_api_key:
             logger.warning("OPENAI_API_KEY 未配置，使用默认配置")
             self.embeddings = OpenAIEmbeddings(
-                model="text-embedding-3-small",
+                model=settings.embedding_model,
                 openai_api_key="sk-placeholder"  # 会被实际调用时替换
             )
         else:
             self.embeddings = OpenAIEmbeddings(
-                model="text-embedding-3-small",
+                model=settings.embedding_model,
                 openai_api_key=settings.openai_api_key,
                 openai_api_base=settings.openai_api_base
             )
-        logger.info("EmbeddingsService 初始化完成 (模型: text-embedding-3-small)")
+        logger.info(f"EmbeddingsService 初始化完成 (模型: {settings.embedding_model})")
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """

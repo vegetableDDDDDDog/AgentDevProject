@@ -46,6 +46,10 @@ class Settings(BaseSettings):
         default="glm-4-flash",
         description="要使用的默认 LLM 模型"
     )
+    embedding_model: str = Field(
+        default="embedding-3",
+        description="文本嵌入模型（智谱AI: embedding-2, embedding-3）"
+    )
     temperature: float = Field(
         default=0.7,
         ge=0.0,

@@ -9,6 +9,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './components/Layout/MainLayout';
 import { LoginPage } from './pages/LoginPage';
 import { ChatPage } from './pages/ChatPage';
+import { KnowledgePage } from './pages/KnowledgePage';
 import { isAuthenticated } from './utils/token';
 
 /**
@@ -34,6 +35,7 @@ export const App: React.FC = () => {
           }
         >
           <Route path="chat" element={<ChatPage />} />
+          <Route path="knowledge" element={<KnowledgePage />} />
           <Route index element={<Navigate to="/chat" replace />} />
         </Route>
       </Routes>

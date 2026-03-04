@@ -64,6 +64,44 @@ async def lifespan(app: FastAPI):
         logger.error(f"数据库初始化失败: {e}")
         raise
 
+    # 自动同步全局配置到所有租户（如果租户缺少 LLM 配置）
+    try:
+        from services.database import SessionLocal, Tenant
+        import os
+
+        db = SessionLocal()
+        try:
+            tenants = db.query(Tenant).filter(Tenant.status == 'active').all()
+
+            # 从环境变量获取全局 LLM 配置
+            global_api_key = settings.openai_api_key
+            global_base_url = settings.openai_api_base
+
+            if global_api_key and global_base_url:
+                updated_count = 0
+                for tenant in tenants:
+                    # 初始化 settings 字典（如果为空）
+                    if not tenant.settings:
+                        tenant.settings = {}
+
+                    # 如果租户缺少 LLM 配置，自动填充
+                    if not tenant.settings.get('llm_api_key') or not tenant.settings.get('llm_base_url'):
+                        tenant.settings['llm_api_key'] = global_api_key
+                        tenant.settings['llm_base_url'] = global_base_url
+                        updated_count += 1
+                        logger.info(f"已为租户 '{tenant.name}' 自动配置 LLM")
+
+                if updated_count > 0:
+                    db.commit()
+                    logger.info(f"已为 {updated_count} 个租户自动同步 LLM 配置")
+            else:
+                logger.warning("未找到全局 LLM 配置（OPENAI_API_KEY 或 OPENAI_API_BASE），跳过自动同步")
+
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning(f"自动同步租户配置失败（非致命）: {e}")
+
     # 记录已注册的 agents
     agents = list_agents()
     logger.info(f"已注册的 agents: {list(agents.keys())}")

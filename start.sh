@@ -1,9 +1,9 @@
 #!/bin/bash
-# AgentDevProject Phase 3 - 快速启动脚本
+# AgentDevProject Phase 4 - 快速启动脚本
 # 用途: 一键启动后端和前端服务
 
 echo "========================================="
-echo "Agent PaaS Platform - Phase 3 启动脚本"
+echo "Agent PaaS Platform - Phase 4 启动脚本"
 echo "========================================="
 echo ""
 
@@ -139,5 +139,5 @@ echo "  停止全部: pkill -f 'python -m api.main' && pkill -f vite"
 echo ""
 
 echo "📖 查看进度文档:"
-echo "  cat docs/progress/phase3-progress.md"
+echo "  cat docs/progress/phase4-progress.md"
 echo ""

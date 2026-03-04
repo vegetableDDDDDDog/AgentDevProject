@@ -68,6 +68,11 @@ export const getUser = (): any | null => {
 };
 
 /**
+ * 获取用户信息（别名，兼容性）
+ */
+export const getUserInfo = getUser;
+
+/**
  * 检查是否已认证
  */
 export const isAuthenticated = (): boolean => {

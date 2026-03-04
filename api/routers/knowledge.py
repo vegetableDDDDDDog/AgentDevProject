@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, UploadFile, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -251,6 +252,15 @@ async def delete_document(
     if not doc:
         raise HTTPException(status_code=404, detail="文档不存在")
 
+    # 先删除关联的任务记录
+    from services.database import DocumentProcessingTask
+    tasks = db.query(DocumentProcessingTask).filter(
+        DocumentProcessingTask.document_id == document_id
+    ).all()
+    for task in tasks:
+        db.delete(task)
+    logger.info(f"已删除 {len(tasks)} 个关联任务")
+
     # TODO: 从 ChromaDB 删除向量(后续实现)
 
     # 删除文件
@@ -260,9 +270,10 @@ async def delete_document(
 
     # 更新知识库统计
     kb = doc.knowledge_base
-    kb.document_count -= 1
-    kb.total_chunks -= doc.chunk_count
-    kb.updated_at = doc.uploaded_at
+    kb.document_count = max(0, kb.document_count - 1)
+    if doc.chunk_count:
+        kb.total_chunks = max(0, kb.total_chunks - doc.chunk_count)
+    kb.updated_at = datetime.now(timezone.utc)
 
     # 删除记录
     db.delete(doc)
@@ -284,6 +295,15 @@ async def delete_knowledge_base(
         raise HTTPException(status_code=404, detail="知识库不存在")
 
     kb_name = kb.name
+
+    # 先删除所有文档关联的处理任务
+    from services.database import DocumentProcessingTask
+    doc_ids = [doc.id for doc in kb.documents]
+    if doc_ids:
+        deleted_tasks = db.query(DocumentProcessingTask).filter(
+            DocumentProcessingTask.document_id.in_(doc_ids)
+        ).delete(synchronize_session=False)
+        logger.info(f"已删除 {deleted_tasks} 个关联任务")
 
     # 删除所有文档文件
     for doc in kb.documents:

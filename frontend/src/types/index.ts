@@ -145,3 +145,83 @@ export interface SSEToolEvent {
     timestamp: number;
   };
 }
+
+// ============================================================================
+// 知识库相关类型 (Phase 4)
+// ============================================================================
+
+export interface KnowledgeBase {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description: string | null;
+  collection_name: string;
+  chunk_size: number;
+  chunk_overlap: number;
+  ocr_enabled: boolean;
+  ocr_threshold: number;
+  document_count: number;
+  total_chunks: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface KnowledgeBaseCreate {
+  name: string;
+  description?: string;
+  chunk_size?: number;
+  chunk_overlap?: number;
+  ocr_enabled?: boolean;
+  ocr_threshold?: number;
+}
+
+export interface Document {
+  id: string;
+  knowledge_base_id: string;
+  tenant_id: string;
+  filename: string;
+  file_type: string;
+  file_size: number;
+  chunk_count: number;
+  upload_status: string;
+  ocr_used: boolean | null;
+  uploaded_at: string;
+  processed_at: string | null;
+  file_path?: string;
+}
+
+export interface TaskProgress {
+  task_id: string;
+  status: string;
+  progress: number;
+  current_step: string;
+  error_message?: string;
+}
+
+export interface DocumentUploadResponse {
+  task_id: string;
+}
+
+// SSE 进度事件类型
+export interface SSEProgressEvent {
+  type: 'progress';
+  value: number;
+  msg: string;
+  status: string;
+}
+
+export interface SSECompleteEvent {
+  type: 'complete';
+  document_id: string;
+  chunks: number;
+}
+
+export interface SSEFailedEvent {
+  type: 'failed';
+  error: string;
+}
+
+export interface SSEErrorEvent {
+  msg: string;
+}

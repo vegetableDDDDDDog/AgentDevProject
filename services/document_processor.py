@@ -154,10 +154,6 @@ class DocumentProcessor:
             await self._update_progress(db, task, 100, "处理完成")
             self._mark_task_completed(db, task, document, len(chunks))
 
-            # 完成
-            await self._update_progress(db, task, 100, "处理完成")
-            self._mark_task_completed(db, task, document, len(chunks))
-
             logger.info(f"文档 {document.filename} 处理完成")
 
         except Exception as e:
